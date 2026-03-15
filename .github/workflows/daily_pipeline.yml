@@ -1,0 +1,35 @@
+name: Finthyra Daily Pipeline
+
+on:
+  schedule:
+    - cron: "0 14 * * 1-5"  # 2pm UTC, Mon-Fri (after US market open, covers EU close)
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      GEMINI_KEY_1: ${{ secrets.GEMINI_KEY_1 }}
+      GEMINI_KEY_2: ${{ secrets.GEMINI_KEY_2 }}
+      GEMINI_KEY_3: ${{ secrets.GEMINI_KEY_3 }}
+      GEMINI_KEY_4: ${{ secrets.GEMINI_KEY_4 }}
+      GEMINI_KEY_5: ${{ secrets.GEMINI_KEY_5 }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily pipeline
+        run: python pipeline/daily_pipeline.py

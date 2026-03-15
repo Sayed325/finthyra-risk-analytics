@@ -1,0 +1,1 @@
+"""Prophet trend forecasting model."""

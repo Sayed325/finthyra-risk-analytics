@@ -49,9 +49,3 @@ Run tests:
 ```bash
 pytest
 ```
-
-## Team
-
-- Sayed — lead / architecture
-- Faisal — ML models
-- Shoumik — dashboard & docs

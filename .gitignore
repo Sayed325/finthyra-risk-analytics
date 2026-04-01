@@ -215,3 +215,20 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+# Streamlit secrets (IMPORTANT)
+.streamlit/
+.streamlit/secrets.toml
+
+# Logs
+*.log
+
+# Local data exports (safety)
+*.csv
+*.xlsx
+
+# Supabase local (if used later)
+.supabase/
+
+# Allow example env (best practice)
+!.env.example
+🔐 Why these ad

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import os
 
 from src.ingestion.common import get_supabase
 from src.ingestion.data_validator import validate_data
@@ -16,6 +17,10 @@ st.title("📊 Finthyra Dashboard")
 # ---------- LOAD DB ----------
 supabase = get_supabase()
 
+# ---------- DEBUG: ENV / DB ----------
+st.sidebar.markdown("### 🛠 Debug Info")
+st.sidebar.write("SUPABASE_URL:", os.getenv("SUPABASE_URL"))
+
 # ---------- VALIDATION ----------
 validation = validate_data()
 
@@ -29,7 +34,7 @@ else:
 # ---------- FETCH ASSETS ----------
 assets = (
     supabase.table("assets")
-    .select("id,ticker")
+    .select("id,ticker,is_active")
     .eq("is_active", True)
     .execute()
     .data
@@ -37,6 +42,16 @@ assets = (
 
 asset_map = {a["ticker"]: a["id"] for a in assets}
 tickers = list(asset_map.keys())
+
+# ---------- DEBUG: ASSET LIST ----------
+st.sidebar.write("Total active assets loaded:", len(tickers))
+st.sidebar.write("Tickers loaded from DB:")
+st.sidebar.write(tickers)
+
+ivv_row = [a for a in assets if a["ticker"] == "IVV"]
+st.sidebar.write("IVV found in assets query:", bool(ivv_row))
+if ivv_row:
+    st.sidebar.write("IVV row:", ivv_row)
 
 # ---------- ASSET SELECTOR ----------
 st.sidebar.header("📌 Controls")
@@ -61,7 +76,6 @@ if prices:
     df = pd.DataFrame(prices)
     df["date"] = pd.to_datetime(df["date"])
 
-    # ---------- KPI CARDS ----------
     latest_price = df["close"].iloc[-1]
     latest_return = df["daily_return"].iloc[-1]
 
@@ -69,11 +83,9 @@ if prices:
     col1.metric("Latest Price", round(latest_price, 2))
     col2.metric("Daily Return", f"{round(latest_return * 100, 2)}%")
 
-    # ---------- PLOTLY CHART ----------
     fig = px.line(df, x="date", y="close", title=f"{selected_ticker} Price")
     st.plotly_chart(fig, use_container_width=True)
 
-    # ---------- TABLE ----------
     with st.expander("Show Raw Data"):
         st.dataframe(df.tail(20))
 
@@ -96,7 +108,6 @@ for row in macro:
     if row["indicator"] not in latest_macro:
         latest_macro[row["indicator"]] = row
 
-# ---------- KPI CARDS FOR MACRO ----------
 cols = st.columns(len(latest_macro))
 
 for i, (k, v) in enumerate(latest_macro.items()):

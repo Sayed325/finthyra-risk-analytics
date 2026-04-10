@@ -1,15 +1,78 @@
 # Author: @ShoumikDutta
 from __future__ import annotations
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, UTC, date
 from typing import Any
 
 import pandas as pd
 import yfinance as yf
 
-from src.ingestion.common import get_logger, get_supabase, retry, to_iso_date
+from src.ingestion.common import get_logger, get_supabase, retry
 
 logger = get_logger("fetch_market_data")
+
+
+# -------------------- DATE / EXCHANGE HELPERS --------------------
+def utc_today() -> date:
+    """
+    CHANGED:
+    - Uses timezone-aware UTC instead of datetime.utcnow().
+    WHY:
+    - Avoids deprecation warning and keeps date logic consistent.
+    """
+    return datetime.now(UTC).date()
+
+
+def get_exchange_for_ticker(ticker: str) -> str:
+    """
+    CHANGED:
+    - Added simple exchange mapping by ticker suffix.
+    WHY:
+    - Non-US tickers should not always follow the same freshness assumptions as US tickers.
+    """
+    ticker_upper = ticker.upper()
+
+    if ticker_upper.endswith(".DE"):
+        return "XETR"
+    if ticker_upper.endswith(".L"):
+        return "LSE"
+
+    return "NYSE"
+
+
+def get_last_expected_date_for_fetch(ticker: str) -> date:
+    """
+    CHANGED:
+    - Simplified expected latest date logic.
+    WHY:
+    - The old code treated some non-US tickers as up-to-date too early.
+    - This version aims to fetch up to the current available market day by using an exclusive end date.
+    """
+    return utc_today()
+
+
+def get_fetch_window(last_date: str | None, ticker: str) -> tuple[date, date]:
+    """
+    Returns:
+        start_date: inclusive
+        fetch_end_date: exclusive for yfinance
+
+    CHANGED:
+    - Uses today+1 as exclusive yfinance end date.
+    WHY:
+    - yfinance daily downloads usually treat end as exclusive.
+    - This prevents missing the latest available row.
+    """
+    today = utc_today()
+
+    if last_date:
+        start_date = datetime.fromisoformat(last_date).date() + timedelta(days=1)
+    else:
+        # Per requirements: if no data exists, fetch last ~5 trading days as buffer
+        start_date = today - timedelta(days=7)
+
+    fetch_end_date = today + timedelta(days=1)
+    return start_date, fetch_end_date
 
 
 # -------------------- DB HELPERS --------------------
@@ -36,11 +99,18 @@ def get_last_price_date(supabase, asset_id: int) -> str | None:
     return rows[0]["date"] if rows else None
 
 
-def get_previous_close(supabase, asset_id: int) -> float | None:
+def get_previous_close(supabase, asset_id: int, before_date: str) -> float | None:
+    """
+    CHANGED:
+    - Pulls the most recent close before the new batch start.
+    WHY:
+    - The first row in a new batch needs previous DB close to compute daily_return correctly.
+    """
     response = (
         supabase.table("prices")
-        .select("close")
+        .select("close,date")
         .eq("asset_id", asset_id)
+        .lt("date", before_date)
         .order("date", desc=True)
         .limit(1)
         .execute()
@@ -49,56 +119,11 @@ def get_previous_close(supabase, asset_id: int) -> float | None:
     if not rows:
         return None
 
-    close_value = rows[0].get("close")
-    return float(close_value) if close_value is not None else None
+    close_val = rows[0].get("close")
+    return float(close_val) if close_val is not None else None
 
 
-# -------------------- DATE HELPERS --------------------
-def get_fetch_window(last_date: str | None) -> tuple[date, date, date]:
-    """
-    Returns:
-        start_date: first date we want to fetch
-        last_expected_date: latest market day we want in DB
-        fetch_end_date: exclusive end date passed to yfinance
-
-    CHANGED:
-    - Added a dedicated helper for date handling.
-    Why:
-    - Keeps the main loop cleaner.
-    - Makes it explicit that yfinance 'end' should be exclusive.
-    """
-
-    # CHANGED:
-    # Still use yesterday as the latest expected day to reduce timezone issues.
-    # Why:
-    # If the script runs before the market/API is fully updated for the current day,
-    # using today's date can create incomplete or empty fetches.
-    last_expected_date = datetime.utcnow().date() - timedelta(days=1)
-
-    if last_date:
-        # CHANGED:
-        # Convert to date first, then add 1 day.
-        # Why:
-        # Keeps types consistent and avoids datetime/date confusion.
-        start_date = datetime.fromisoformat(last_date).date() + timedelta(days=1)
-    else:
-        # CHANGED:
-        # Use date directly rather than datetime -> .date() later.
-        # Why:
-        # Cleaner and more consistent.
-        start_date = last_expected_date - timedelta(days=7)
-
-    # CHANGED:
-    # yfinance daily download behaves as if 'end' is exclusive.
-    # To fetch data through last_expected_date, pass end = last_expected_date + 1 day.
-    # Why:
-    # Old behavior used start=end for one-day fetches and returned empty data.
-    fetch_end_date = last_expected_date + timedelta(days=1)
-
-    return start_date, last_expected_date, fetch_end_date
-
-
-# -------------------- DATA FETCH --------------------
+# -------------------- FETCH --------------------
 def download_ticker_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
     df = yf.download(
         ticker,
@@ -112,66 +137,70 @@ def download_ticker_data(ticker: str, start_date: str, end_date: str) -> pd.Data
     if df is None or df.empty:
         return pd.DataFrame()
 
-    # Handle MultiIndex columns
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
     df = df.reset_index()
 
-    if "Date" not in df.columns:
-        raise ValueError(f"{ticker}: yfinance response missing Date column")
-
-    required_cols = {"Open", "High", "Low", "Close", "Volume"}
-    missing = required_cols - set(df.columns)
+    required_cols = ["Date", "Open", "High", "Low", "Close", "Volume"]
+    missing = [c for c in required_cols if c not in df.columns]
     if missing:
-        raise ValueError(f"{ticker}: missing expected columns: {sorted(missing)}")
+        raise ValueError(f"{ticker}: missing columns {missing}")
 
     return df
 
 
 # -------------------- TRANSFORM --------------------
-def build_price_rows(
-    df: pd.DataFrame,
-    asset_id: int,
-    previous_close: float | None,
-) -> list[dict[str, Any]]:
+def compute_daily_returns(df: pd.DataFrame, previous_close: float | None) -> pd.DataFrame:
+    """
+    CHANGED:
+    - First row uses prior DB close if available.
+    WHY:
+    - Matches ingestion spec for incremental daily fetch.
+    """
+    out = df.copy()
+
+    closes = out["Close"].astype(float).tolist()
+    daily_returns: list[float | None] = []
+
+    prev = previous_close
+    for close_val in closes:
+        if prev is None:
+            daily_returns.append(None)
+        else:
+            daily_returns.append((float(close_val) - float(prev)) / float(prev))
+        prev = float(close_val)
+
+    out["daily_return"] = daily_returns
+    return out
+
+
+def build_rows(df: pd.DataFrame, asset_id: int) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    prev_close = previous_close
 
     for _, row in df.iterrows():
-        close_value = row.get("Close")
-        if pd.isna(close_value):
-            continue
-
-        open_value = row.get("Open")
-        high_value = row.get("High")
-        low_value = row.get("Low")
-        volume_value = row.get("Volume")
-
-        daily_return = None
-        if prev_close is not None and prev_close != 0:
-            daily_return = (float(close_value) - prev_close) / prev_close
-
         rows.append(
             {
                 "asset_id": asset_id,
-                "date": to_iso_date(row["Date"]),
-                "open": None if pd.isna(open_value) else round(float(open_value), 4),
-                "high": None if pd.isna(high_value) else round(float(high_value), 4),
-                "low": None if pd.isna(low_value) else round(float(low_value), 4),
-                "close": round(float(close_value), 4),
-                "volume": None if pd.isna(volume_value) else int(volume_value),
-                "daily_return": None if daily_return is None else round(daily_return, 6),
+                "date": row["Date"].strftime("%Y-%m-%d"),
+                "open": None if pd.isna(row["Open"]) else round(float(row["Open"]), 4),
+                "high": None if pd.isna(row["High"]) else round(float(row["High"]), 4),
+                "low": None if pd.isna(row["Low"]) else round(float(row["Low"]), 4),
+                "close": None if pd.isna(row["Close"]) else round(float(row["Close"]), 4),
+                "volume": None if pd.isna(row["Volume"]) else int(row["Volume"]),
+                "daily_return": (
+                    None
+                    if pd.isna(row["daily_return"]) or row["daily_return"] is None
+                    else round(float(row["daily_return"]), 6)
+                ),
             }
         )
-
-        prev_close = float(close_value)
 
     return rows
 
 
 # -------------------- LOAD --------------------
-def upsert_prices(supabase, rows: list[dict[str, Any]]) -> int:
+def upsert_rows(supabase, rows: list[dict[str, Any]], ticker: str) -> int:
     if not rows:
         return 0
 
@@ -184,10 +213,8 @@ def upsert_prices(supabase, rows: list[dict[str, Any]]) -> int:
     except Exception as exc:
         first_date = rows[0]["date"]
         last_date = rows[-1]["date"]
-        asset_id = rows[0]["asset_id"]
         raise RuntimeError(
-            f"Supabase write failed for asset_id={asset_id}, "
-            f"date_range={first_date}..{last_date}: {exc}"
+            f"Supabase write failed for {ticker}, date_range={first_date}..{last_date}: {exc}"
         ) from exc
 
 
@@ -196,44 +223,33 @@ def fetch_market_data() -> dict[str, Any]:
     supabase = get_supabase()
     assets = get_active_assets(supabase)
 
-    tickers_processed = 0
+    logger.info(f"Found {len(assets)} active assets")
+
     total_rows_inserted = 0
     failures: list[str] = []
-
-    logger.info(f"Found {len(assets)} active assets")
 
     for asset in assets:
         asset_id = asset["id"]
         ticker = asset["ticker"]
 
         try:
-            last_date = get_last_price_date(supabase, asset_id)
+            last_date_str = get_last_price_date(supabase, asset_id)
+            last_expected_date = get_last_expected_date_for_fetch(ticker)
 
-            if last_date:
-                previous_close = get_previous_close(supabase, asset_id)
-            else:
-                previous_close = None
+            if last_date_str:
+                last_date = datetime.fromisoformat(last_date_str).date()
+                if last_date >= last_expected_date:
+                    logger.info(f"{ticker}: already up-to-date (last_date={last_date})")
+                    continue
 
-            # CHANGED:
-            # Centralized fetch-window logic.
-            # Why:
-            # Avoids the old same-day start/end bug and keeps dates consistent.
-            start_date, last_expected_date, fetch_end_date = get_fetch_window(last_date)
+            start_date, fetch_end_date = get_fetch_window(last_date_str, ticker)
 
-            # CHANGED:
-            # Compare against last_expected_date, not fetch_end_date.
-            # Why:
-            # fetch_end_date is only for yfinance's exclusive end parameter.
-            if start_date > last_expected_date:
-                logger.info(f"{ticker}: already up-to-date (last_date={last_date})")
-                tickers_processed += 1
+            if start_date >= fetch_end_date:
+                logger.info(f"{ticker}: no fetch needed")
                 continue
 
-            logger.info(
-                f"{ticker}: fetching from {start_date} to {last_expected_date}"
-            )
+            logger.info(f"{ticker}: fetching from {start_date} to {fetch_end_date - timedelta(days=1)}")
 
-            # ---------- Fetch ----------
             df = retry(
                 lambda: download_ticker_data(
                     ticker,
@@ -248,54 +264,32 @@ def fetch_market_data() -> dict[str, Any]:
 
             if df.empty:
                 logger.warning(f"{ticker}: no data returned")
-                tickers_processed += 1
                 continue
 
-            # CHANGED:
-            # Filter out any rows beyond last_expected_date just in case.
-            # Why:
-            # Keeps DB data aligned with the intended date window.
-            df = df[df["Date"].dt.date <= last_expected_date]
+            previous_close = get_previous_close(supabase, asset_id, start_date.isoformat())
+            df = compute_daily_returns(df, previous_close)
 
-            if df.empty:
-                logger.warning(f"{ticker}: no usable rows after date filtering")
-                tickers_processed += 1
-                continue
-
-            # ---------- Transform ----------
-            rows = build_price_rows(df, asset_id, previous_close)
-
-            if not rows:
-                logger.warning(f"{ticker}: no rows built after transformation")
-                tickers_processed += 1
-                continue
-
-            # ---------- Load ----------
-            inserted = upsert_prices(supabase, rows)
-
-            logger.info(f"{ticker}: upserted {inserted} rows")
+            rows = build_rows(df, asset_id)
+            inserted = upsert_rows(supabase, rows, ticker)
 
             total_rows_inserted += inserted
-            tickers_processed += 1
+            logger.info(f"{ticker}: inserted {inserted} rows")
 
         except Exception as exc:
             logger.warning(f"{ticker}: failed with error: {exc}")
             failures.append(ticker)
-            tickers_processed += 1
 
     logger.info(
-        f"Completed: {tickers_processed} tickers processed, "
-        f"{total_rows_inserted} rows inserted, {len(failures)} failures"
+        f"Completed: {len(assets)} tickers processed, {total_rows_inserted} rows inserted, {len(failures)} failures"
     )
 
     return {
-        "tickers_processed": tickers_processed,
+        "tickers_processed": len(assets),
         "rows_inserted": total_rows_inserted,
         "failures": failures,
     }
 
 
-# -------------------- CLI --------------------
 if __name__ == "__main__":
     result = fetch_market_data()
     print(result)

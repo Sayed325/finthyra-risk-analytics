@@ -1,58 +1,78 @@
-#Author: @ShoumikDutta
-"""
-Daily pipeline orchestrator.
-Runs full ingestion + validation in correct order.
-"""
+# Author: @ShoumikDutta
+from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
+from typing import Any
 
+from src.ingestion.common import get_logger
 from src.ingestion.fetch_market_data import fetch_market_data
 from src.ingestion.fetch_macro_data import fetch_macro_data
 from src.ingestion.fetch_vix import fetch_vix
 from src.ingestion.data_validator import validate_data
 
+logger = get_logger("daily_pipeline")
 
-def run_daily_pipeline():
-    print("\n==============================")
-    print("🚀 FINTHYRA DAILY PIPELINE")
-    print("==============================\n")
 
-    start = datetime.now()
+def run_daily_pipeline() -> dict[str, Any]:
+    """
+    CHANGED:
+    - Replaced print-heavy orchestration with logging + structured return.
+    WHY:
+    - Easier to debug, test, and use later in CI or automation.
+    """
+    start = datetime.now(UTC)
+
+    logger.info("Starting Finthyra daily pipeline")
 
     # ---------- INGESTION ----------
-    print("📥 Running market data ingestion...")
+    logger.info("Running market data ingestion")
     market_result = fetch_market_data()
 
-    print("📥 Running macro data ingestion...")
+    logger.info("Running macro data ingestion")
     macro_result = fetch_macro_data()
 
-    print("📥 Running VIX ingestion...")
+    logger.info("Running VIX ingestion")
     vix_result = fetch_vix()
 
     # ---------- VALIDATION ----------
-    print("\n🔍 Running validation...")
+    logger.info("Running data validation")
     validation = validate_data()
 
-    # ---------- SUMMARY ----------
-    print("\n==============================")
-    print("📊 PIPELINE SUMMARY")
-    print("==============================")
+    duration_seconds = round((datetime.now(UTC) - start).total_seconds(), 2)
 
-    print(f"Market: {market_result}")
-    print(f"Macro: {macro_result}")
-    print(f"VIX: {vix_result}")
-    print(f"Validation: {validation['status']}")
+    result = {
+        "market": market_result,
+        "macro": macro_result,
+        "vix": vix_result,
+        "validation": validation,
+        "duration_seconds": duration_seconds,
+    }
 
-    duration = datetime.now() - start
-    print(f"\n⏱ Completed in: {duration}")
+    logger.info(
+        f"Pipeline summary | "
+        f"market_rows={market_result.get('rows_inserted', 0)} | "
+        f"macro_rows={macro_result.get('rows_inserted', 0)} | "
+        f"vix_rows={vix_result.get('rows_inserted', 0)} | "
+        f"validation={validation['status']} | "
+        f"duration={duration_seconds}s"
+    )
 
     # ---------- FAIL SAFE ----------
     if validation["status"] != "pass":
-        raise RuntimeError("❌ Pipeline failed validation check")
+        """
+        CHANGED:
+        - Pipeline still fails if validation is not pass.
+        WHY:
+        - This protects downstream risk metrics / ML training from bad or incomplete data.
+        """
+        raise RuntimeError(
+            f"Pipeline stopped because validation status was '{validation['status']}'"
+        )
 
-    print("\n✅ Pipeline completed successfully!")
+    logger.info("Pipeline completed successfully")
+    return result
 
 
 if __name__ == "__main__":
-    run_daily_pipeline()
-
+    output = run_daily_pipeline()
+    print(output)

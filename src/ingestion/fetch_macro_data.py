@@ -23,6 +23,7 @@ INDICATORS = {
     "fed_funds_rate": "DFF",
     "cpi": "CPIAUCSL",
     "treasury_yield_10y": "DGS10",
+    "eur_usd_rate": "DEXUSEU",
 }
 
 

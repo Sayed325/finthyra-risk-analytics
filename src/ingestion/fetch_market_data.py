@@ -7,39 +7,19 @@ from typing import Any
 import pandas as pd
 import yfinance as yf
 
-from src.ingestion.common import get_logger, get_supabase, retry
+from src.ingestion.common import (
+    get_active_assets,
+    get_exchange_for_ticker,
+    get_logger,
+    get_supabase,
+    retry,
+    utc_today,
+)
 
 logger = get_logger("fetch_market_data")
 
 
-# -------------------- DATE / EXCHANGE HELPERS --------------------
-def utc_today() -> date:
-    """
-    CHANGED:
-    - Uses timezone-aware UTC instead of datetime.utcnow().
-    WHY:
-    - Avoids deprecation warning and keeps date logic consistent.
-    """
-    return datetime.now(UTC).date()
-
-
-def get_exchange_for_ticker(ticker: str) -> str:
-    """
-    CHANGED:
-    - Added simple exchange mapping by ticker suffix.
-    WHY:
-    - Non-US tickers should not always follow the same freshness assumptions as US tickers.
-    """
-    ticker_upper = ticker.upper()
-
-    if ticker_upper.endswith(".DE"):
-        return "XETR"
-    if ticker_upper.endswith(".L"):
-        return "LSE"
-
-    return "NYSE"
-
-
+# -------------------- DATE / FETCH HELPERS --------------------
 def get_last_expected_date_for_fetch(ticker: str) -> date:
     """
     CHANGED:
@@ -76,16 +56,6 @@ def get_fetch_window(last_date: str | None, ticker: str) -> tuple[date, date]:
 
 
 # -------------------- DB HELPERS --------------------
-def get_active_assets(supabase) -> list[dict[str, Any]]:
-    response = (
-        supabase.table("assets")
-        .select("id,ticker")
-        .eq("is_active", True)
-        .execute()
-    )
-    return response.data or []
-
-
 def get_last_price_date(supabase, asset_id: int) -> str | None:
     response = (
         supabase.table("prices")

@@ -1,13 +1,17 @@
 # Author: @ShoumikDutta
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from datetime import datetime, timedelta, UTC, date
 from typing import Any
 
 import pandas as pd
 import yfinance as yf
 
-from src.ingestion.common import get_logger, get_supabase, retry
+from src.ingestion.common import get_active_assets, get_logger, get_supabase, retry
 
 logger = get_logger("historical_backfill")
 
@@ -15,16 +19,6 @@ START_DATE_DEFAULT = "2022-01-01"
 
 
 # -------------------- DB HELPERS --------------------
-def get_active_assets(supabase) -> list[dict[str, Any]]:
-    response = (
-        supabase.table("assets")
-        .select("id,ticker")
-        .eq("is_active", True)
-        .execute()
-    )
-    return response.data or []
-
-
 def get_existing_dates(supabase, asset_id: int) -> set[str]:
     """
     CHANGED:

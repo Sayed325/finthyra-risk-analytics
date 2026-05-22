@@ -6,42 +6,20 @@ from typing import Any
 
 import pandas_market_calendars as mcal
 
-from src.ingestion.common import get_logger, get_supabase
+from src.ingestion.common import (
+    get_active_assets,
+    get_exchange_for_ticker,
+    get_logger,
+    get_supabase,
+    utc_today,
+)
 
 logger = get_logger("data_validator")
 
 
 # -------------------- DATE HELPERS --------------------
-def utc_today() -> date:
-    """
-    CHANGED:
-    - Centralized UTC-aware 'today' helper.
-    WHY:
-    - Keeps all validator date logic consistent.
-    """
-    return datetime.now(UTC).date()
-
-
 def parse_iso_date(value: str) -> date:
     return datetime.fromisoformat(value).date()
-
-
-def get_exchange_for_ticker(ticker: str) -> str:
-    """
-    CHANGED:
-    - Added simple ticker-to-exchange mapping.
-    WHY:
-    - The previous validator checked all assets with NYSE calendar,
-      which caused false completeness warnings for German and London tickers.
-    """
-    ticker_upper = ticker.upper()
-
-    if ticker_upper.endswith(".DE"):
-        return "XETR"   # Xetra
-    if ticker_upper.endswith(".L"):
-        return "LSE"    # London Stock Exchange
-
-    return "NYSE"
 
 
 def get_recent_expected_trading_days(exchange: str, lookback_days: int = 5) -> list[str]:
@@ -91,16 +69,6 @@ def trading_days_old(last_date: date, exchange: str) -> int:
 
 
 # -------------------- DB HELPERS --------------------
-def get_active_assets(supabase) -> list[dict[str, Any]]:
-    response = (
-        supabase.table("assets")
-        .select("id,ticker")
-        .eq("is_active", True)
-        .execute()
-    )
-    return response.data or []
-
-
 def get_asset_recent_dates(supabase, asset_id: int, min_date: str) -> list[str]:
     response = (
         supabase.table("prices")

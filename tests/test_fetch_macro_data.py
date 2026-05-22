@@ -102,7 +102,7 @@ def test_fetch_macro_data_success(mock_supabase, mock_last_date, mock_fred, mock
     assert "rows_inserted" in result
     assert "failures" in result
     assert result["failures"] == []
-    assert result["rows_inserted"] == len(["fed_funds_rate", "cpi", "treasury_yield_10y"])
+    assert result["rows_inserted"] == 4
 
 
 @patch("src.ingestion.fetch_macro_data.fetch_fred_series")
@@ -114,7 +114,7 @@ def test_fetch_macro_data_records_failure_on_fred_error(mock_supabase, mock_last
     mock_fred.side_effect = RuntimeError("FRED API down")
 
     result = fetch_macro_data()
-    assert len(result["failures"]) == 3  # all 3 indicators fail
+    assert len(result["failures"]) == 4  # all 4 indicators fail
 
 
 @patch("src.ingestion.fetch_macro_data.upsert_rows")

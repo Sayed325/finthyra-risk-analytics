@@ -2,7 +2,7 @@
 import logging
 import os
 import time
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Callable, TypeVar
 
 from dotenv import load_dotenv
@@ -31,6 +31,29 @@ def get_supabase() -> Client:
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_SECRET_KEY"]
     return create_client(url, key)
+
+
+def utc_today() -> date:
+    return datetime.now(UTC).date()
+
+
+def get_exchange_for_ticker(ticker: str) -> str:
+    ticker_upper = ticker.upper()
+    if ticker_upper.endswith(".DE"):
+        return "XETR"
+    if ticker_upper.endswith(".L"):
+        return "LSE"
+    return "NYSE"
+
+
+def get_active_assets(supabase: Client) -> list[dict[str, Any]]:
+    response = (
+        supabase.table("assets")
+        .select("id,ticker")
+        .eq("is_active", True)
+        .execute()
+    )
+    return response.data or []
 
 
 def today_iso() -> str:

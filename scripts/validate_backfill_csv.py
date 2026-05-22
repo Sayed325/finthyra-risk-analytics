@@ -2,7 +2,6 @@
 
 import pandas as pd
 from pathlib import Path
-print("SCRIPT STARTED")
 
 REQUIRED_COLUMNS = {
     "date",

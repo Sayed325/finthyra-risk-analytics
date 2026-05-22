@@ -123,6 +123,11 @@ streamlit run app.py
 ## Architecture Decision Records
 
 - [ADR-001: Database Choice — Supabase PostgreSQL](docs/adr/ADR-001-database-choice.md)
+- [ADR-002: Market & Macro Data API Selection — yfinance + FRED](docs/adr/ADR-002-data-api-selection.md)
+- [ADR-003: ML Model Choice for Anomaly Detection — XGBoost with Pseudo-Labelling](docs/adr/ADR-003-ml-model-anomaly-detection.md)
+- [ADR-004: AI Commentary Layer Design — Gemini with Round-Robin Key Rotation](docs/adr/ADR-004-ai-commentary-layer.md)
+- [ADR-005: CI/CD and Pipeline Execution Strategy — GitHub Actions Cron](docs/adr/ADR-005-cicd-pipeline-strategy.md)
+- [ADR-006: Dashboard Framework — Streamlit](docs/adr/ADR-006-dashboard-framework.md)
 
 ## Team
 

@@ -479,7 +479,7 @@ else:
     except Exception:
         st.info("No data available for Risk Metrics Trend.")
 
-# ── FOOTER ────────────────────────────────────────────────────────────────────
+# ── FOOTER ───────────────────────────────────────────────────────────────────
 
 st.markdown("---")
 st.caption("Finthyra • Financial Intelligence Platform • Built by Sayed Hossen, Shoumik Dutta & Faisal Ahemmed")

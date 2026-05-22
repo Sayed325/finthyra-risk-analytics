@@ -482,4 +482,4 @@ else:
 # ── FOOTER ────────────────────────────────────────────────────────────────────
 
 st.markdown("---")
-st.caption("Finthyra • Financial Intelligence Platform • Built by Sayed Hossen")
+st.caption("Finthyra • Financial Intelligence Platform • Built by Sayed Hossen, Shoumik Dutta & Faisal Ahemmed")

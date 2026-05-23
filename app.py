@@ -14,9 +14,73 @@ load_dotenv()
 
 # ── PAGE CONFIG ───────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="Finthyra", page_icon="📊", layout="wide")
-st.title("📊 Finthyra — Financial Intelligence Platform")
-st.caption("Portfolio risk analysis powered by open data, modern data engineering, and AI.")
+st.set_page_config(page_title="Finthyra", layout="wide")
+st.markdown("""<style>
+  header[data-testid="stHeader"] { background: transparent !important; border: none !important; }
+  div.block-container { padding-top: 0 !important; }
+  section[data-testid="stSidebar"] > div { padding-top: 1rem; }
+</style>""", unsafe_allow_html=True)
+
+_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="90" viewBox="0 0 260 80">
+  <defs>
+    <linearGradient id="fog" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D9488"/><stop offset="100%" stop-color="#1E3A5F"/>
+    </linearGradient>
+    <linearGradient id="fig" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5EEAD4"/><stop offset="100%" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+  <polygon points="40,8 67.7,24 67.7,56 40,72 12.3,56 12.3,24" fill="url(#fog)"/>
+  <polygon points="40,18.6 58.5,29.3 58.5,50.7 40,61.4 21.5,50.7 21.5,29.3" fill="none" stroke="url(#fig)" stroke-width="1.8"/>
+  <line x1="40" y1="18.6" x2="40" y2="8" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="58.5" y1="29.3" x2="67.7" y2="24" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="58.5" y1="50.7" x2="67.7" y2="56" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="40" y1="61.4" x2="40" y2="72" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="21.5" y1="50.7" x2="12.3" y2="56" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="21.5" y1="29.3" x2="12.3" y2="24" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="40" cy="40" r="4.5" fill="#5EEAD4"/>
+  <text x="88" y="39" font-family="Trebuchet MS,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" letter-spacing="-0.5">Finthyra</text>
+  <text x="89" y="57" font-family="Trebuchet MS,Segoe UI,sans-serif" font-size="10" font-weight="600" fill="#5EEAD4" letter-spacing="3">RISK &#xB7; ANALYTICS &#xB7; AI</text>
+</svg>"""
+
+_LOGO_SVG_SMALL = """<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="52" viewBox="0 0 260 80">
+  <defs>
+    <linearGradient id="fog2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D9488"/><stop offset="100%" stop-color="#1E3A5F"/>
+    </linearGradient>
+    <linearGradient id="fig2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5EEAD4"/><stop offset="100%" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+  <polygon points="40,8 67.7,24 67.7,56 40,72 12.3,56 12.3,24" fill="url(#fog2)"/>
+  <polygon points="40,18.6 58.5,29.3 58.5,50.7 40,61.4 21.5,50.7 21.5,29.3" fill="none" stroke="url(#fig2)" stroke-width="1.8"/>
+  <line x1="40" y1="18.6" x2="40" y2="8" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="58.5" y1="29.3" x2="67.7" y2="24" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="58.5" y1="50.7" x2="67.7" y2="56" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="40" y1="61.4" x2="40" y2="72" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="21.5" y1="50.7" x2="12.3" y2="56" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="21.5" y1="29.3" x2="12.3" y2="24" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="40" cy="40" r="4.5" fill="#5EEAD4"/>
+  <text x="88" y="39" font-family="Trebuchet MS,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" letter-spacing="-0.5">Finthyra</text>
+  <text x="89" y="57" font-family="Trebuchet MS,Segoe UI,sans-serif" font-size="10" font-weight="600" fill="#5EEAD4" letter-spacing="3">RISK &#xB7; ANALYTICS &#xB7; AI</text>
+</svg>"""
+
+_today = datetime.now(UTC).strftime("%a %d %b %Y")
+st.markdown(f"""
+<div style="background:#0A1628;padding:20px 32px;border-bottom:2px solid #0D9488;
+  border-radius:0 0 10px 10px;display:flex;justify-content:space-between;
+  align-items:center;margin-bottom:20px">
+  <div style="width:320px">{_LOGO_SVG}</div>
+  <div style="text-align:right">
+    <div style="font-size:12px;color:#94A3B8;font-family:monospace">{_today}</div>
+    <div style="font-size:11px;color:#5EEAD4;margin-top:4px">&#x25CF; Live</div>
+  </div>
+</div>
+<p style="color:#64748B;font-size:12px;font-style:italic;padding-left:4px;
+  margin-top:-12px;margin-bottom:24px">
+  Portfolio risk analysis powered by open data, modern data engineering, and AI.
+</p>
+""", unsafe_allow_html=True)
 
 # ── DB CONNECTION ─────────────────────────────────────────────────────────────
 
@@ -72,6 +136,11 @@ except Exception:
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 
+st.sidebar.markdown(
+    f'<div style="padding:4px 0 12px">{_LOGO_SVG_SMALL}</div>'
+    '<hr style="border:none;border-top:1px solid #0D9488;margin:0 0 12px"/>',
+    unsafe_allow_html=True
+)
 st.sidebar.header("Controls")
 if active_tickers:
     selected_tickers: list[str] = st.sidebar.multiselect(

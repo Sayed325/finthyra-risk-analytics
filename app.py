@@ -142,12 +142,18 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 st.sidebar.header("Controls")
+def _reset_assets():
+    st.session_state["asset_select"] = active_tickers
+
 if active_tickers:
+    if "asset_select" not in st.session_state:
+        st.session_state["asset_select"] = active_tickers
     selected_tickers: list[str] = st.sidebar.multiselect(
         "Select Assets",
         options=active_tickers,
-        default=active_tickers,
+        key="asset_select",
     )
+    st.sidebar.button("Reset selection", use_container_width=True, on_click=_reset_assets)
 else:
     selected_tickers = []
 

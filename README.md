@@ -135,7 +135,7 @@ streamlit run app.py
 |---|---|
 | **Sayed Hossen** | Project lead — architecture, pipeline, risk metrics, ML, AI layer, test suite |
 | **Shoumik** | Project structure, ingestion pipeline, daily orchestrator |
-| **Faisal** | ML engineering |
+| **Faisal** | ML engineering, Presentation |
 
 ## License
 

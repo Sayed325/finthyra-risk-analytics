@@ -212,9 +212,19 @@ def _build_prompt(
         return f"{val}{suffix}" if val is not None else "N/A"
 
     return (
-        "You are a quantitative analyst writing a daily portfolio briefing. "
-        "Write exactly 3 sentences. Be specific with numbers. Flag the primary risk. "
-        "No jargon. Professional but readable. Do not use bullet points or lists.\n\n"
+        "Write a 3-sentence daily portfolio summary for a reader who is smart but has never studied finance "
+        "and does not know terms like Beta, Sharpe Ratio, or Value at Risk. "
+        "Rules: "
+        "Sentence 1 is the headline — state whether the portfolio is up or down overall and whether risk is currently high or low. "
+        "Every number must be immediately followed by its meaning in plain everyday words; never leave a number unexplained. "
+        "One sentence must name the single biggest risk in terms anyone can understand. "
+        "Never use these words — give the plain meaning instead: Beta, Sharpe Ratio, Sharpe, VaR, Value at Risk, risk-adjusted, basis points. "
+        "No bullet points, no greeting, no sign-off, no preamble, no markdown. "
+        "Translation examples to anchor your register: "
+        "Beta 1.32 → write 'moves harder than the market — when the market falls 1%, this tends to fall about 1.3%'; "
+        "VaR 95% of -2.26% → write 'on a typical bad day you could lose around 2.3%; worse days happen but are rarer'; "
+        "Sharpe 1.07 → write 'the returns are solid for the amount of risk taken'; "
+        "tech concentration → write 'your holdings move together, so one bad day in tech hits the whole portfolio'.\n\n"
         f"Portfolio holdings: {holdings_str}\n\n"
         "Risk metrics for today:\n"
         f"- VaR (95%): {_fmt(risk_metrics.get('var_95'))}\n"
@@ -232,8 +242,8 @@ def _build_prompt(
         f"- 10Y Treasury Yield: {_fmt(macro.get('treasury_yield_10y'), '%')}\n"
         f"- VIX: {_fmt(macro.get('vix'))}\n"
         f"- EUR/USD: {_fmt(macro.get('eur_usd_rate'))}\n\n"
-        "Output ONLY the 3-sentence portfolio briefing. "
-        "No preamble, no sign-off, no formatting."
+        "Output ONLY the 3-sentence briefing in plain English. "
+        "No jargon, no preamble, no sign-off, no formatting."
     )
 
 
@@ -328,6 +338,5 @@ def generate_commentary(portfolio_id: int | None = None) -> dict:
 
 
 if __name__ == "__main__":
-    import json
     result = generate_commentary()
-    print(json.dumps(result, indent=2, default=str))
+    print(result)

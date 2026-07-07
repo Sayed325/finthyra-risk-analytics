@@ -133,13 +133,13 @@ streamlit run app.py
 - [ADR-005: CI/CD and Pipeline Execution Strategy — GitHub Actions Cron](docs/adr/ADR-005-cicd-pipeline-strategy.md)
 - [ADR-006: Dashboard Framework — Streamlit](docs/adr/ADR-006-dashboard-framework.md)
 
-## Team
+## Team Roles and Contributions
 
-| Person | Role |
-|---|---|
-| **Sayed Hossen** | Project lead — architecture, pipeline, risk metrics, ML, AI layer, test suite |
-| **Shoumik** | Project structure, ingestion pipeline, daily orchestrator |
-| **Faisal** | ML engineering, Presentation |
+| Member | Role | Responsibility |
+|---|---|---|
+| **Sayed Hossen** | Project lead | System architecture, ingestion layer rework and hardening, storage schema, risk metrics module, feature engineering, XGBoost anomaly model, AI analyst layer, dashboard, pipeline automation, and operations |
+| **Shoumik Dutta** | Data engineering support | Initial version of the data ingestion scripts, development of the automated test suite, and the rule-based pseudo-labeling used to validate the anomaly model |
+| **Faisal Ahmed** | Research and documentation | Research on financial terminology and risk concepts, project documentation, and preparation of the final presentation |
 
 ## License
 

@@ -10,9 +10,15 @@ from src.ingestion.common import get_supabase
 ACTIVE_TICKERS = {"AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "SPY", "QQQ", "VTI"}
 
 INACTIVE_TICKERS = {
-    "SAP", "SIE.DE", "BAS.DE", "ALV.DE",
-    "VUSA.L", "EUNL.DE", "IWDA.L",
-    "IVV", "VEA",
+    "SAP",
+    "SIE.DE",
+    "BAS.DE",
+    "ALV.DE",
+    "VUSA.L",
+    "EUNL.DE",
+    "IWDA.L",
+    "IVV",
+    "VEA",
 }
 
 
@@ -20,10 +26,14 @@ def set_active_assets() -> None:
     supabase = get_supabase()
 
     for ticker in INACTIVE_TICKERS:
-        supabase.table("assets").update({"is_active": False}).eq("ticker", ticker).execute()
+        supabase.table("assets").update({"is_active": False}).eq(
+            "ticker", ticker
+        ).execute()
 
     for ticker in ACTIVE_TICKERS:
-        supabase.table("assets").update({"is_active": True}).eq("ticker", ticker).execute()
+        supabase.table("assets").update({"is_active": True}).eq(
+            "ticker", ticker
+        ).execute()
 
     rows = supabase.table("assets").select("ticker,is_active").execute().data or []
 

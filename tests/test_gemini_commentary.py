@@ -1,9 +1,10 @@
 """Unit tests for gemini_commentary.py — fully mocked, no network/DB/API calls."""
+
 from __future__ import annotations
 
 import itertools
 import os
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,7 +15,6 @@ from src.ai_analyst.gemini_commentary import (
     _build_combinations,
     _load_risk_metrics,
     _load_latest_macro,
-    _load_portfolio_holdings,
     _load_worst_performer,
     _build_prompt,
     _write_briefing,
@@ -22,8 +22,8 @@ from src.ai_analyst.gemini_commentary import (
 )
 from pipeline.daily_pipeline import run_daily_pipeline
 
-
 # -------------------- Fixtures --------------------
+
 
 @pytest.fixture(autouse=True)
 def reset_key_state():
@@ -39,14 +39,18 @@ def reset_key_state():
 
 # -------------------- Key rotation tests --------------------
 
+
 def test_load_keys_filters_empty():
-    with patch.dict(os.environ, {
-        "GEMINI_KEY_1": "valid_key_1",
-        "GEMINI_KEY_2": "",
-        "GEMINI_KEY_3": "valid_key_3",
-        "GEMINI_KEY_4": "valid_key_4",
-        "GEMINI_KEY_5": "",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "GEMINI_KEY_1": "valid_key_1",
+            "GEMINI_KEY_2": "",
+            "GEMINI_KEY_3": "valid_key_3",
+            "GEMINI_KEY_4": "valid_key_4",
+            "GEMINI_KEY_5": "",
+        },
+    ):
         result = _load_keys()
     assert len(result) == 3
     assert "valid_key_1" in result
@@ -55,13 +59,16 @@ def test_load_keys_filters_empty():
 
 
 def test_load_keys_none_available():
-    with patch.dict(os.environ, {
-        "GEMINI_KEY_1": "",
-        "GEMINI_KEY_2": "",
-        "GEMINI_KEY_3": "",
-        "GEMINI_KEY_4": "",
-        "GEMINI_KEY_5": "",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "GEMINI_KEY_1": "",
+            "GEMINI_KEY_2": "",
+            "GEMINI_KEY_3": "",
+            "GEMINI_KEY_4": "",
+            "GEMINI_KEY_5": "",
+        },
+    ):
         result = _load_keys()
     assert result == []
 
@@ -107,7 +114,9 @@ def test_fallback_to_next_key_on_error():
         call_count[0] += 1
         client = MagicMock()
         if call_count[0] == 1:
-            client.models.generate_content.side_effect = Exception("Rate limit exceeded")
+            client.models.generate_content.side_effect = Exception(
+                "Rate limit exceeded"
+            )
         else:
             resp = MagicMock()
             resp.text = "briefing text"
@@ -124,15 +133,24 @@ def test_fallback_to_next_key_on_error():
 
 # -------------------- Data loading tests --------------------
 
+
 def test_load_risk_metrics_returns_todays_row():
     supabase = MagicMock()
     expected = {
-        "portfolio_id": 1, "date": "2026-05-21",
-        "var_95": -0.02, "var_99": -0.03, "sharpe_ratio": 1.5,
-        "max_drawdown": -0.1, "beta_vs_benchmark": 0.95,
-        "anomaly_flag": False, "anomaly_score": 0.1, "anomaly_type": None,
+        "portfolio_id": 1,
+        "date": "2026-05-21",
+        "var_95": -0.02,
+        "var_99": -0.03,
+        "sharpe_ratio": 1.5,
+        "max_drawdown": -0.1,
+        "beta_vs_benchmark": 0.95,
+        "anomaly_flag": False,
+        "anomaly_score": 0.1,
+        "anomaly_type": None,
     }
-    supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [expected]
+    supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
+        expected
+    ]
 
     result = _load_risk_metrics(supabase, 1, "2026-05-21")
 
@@ -143,7 +161,9 @@ def test_load_risk_metrics_returns_todays_row():
 
 def test_load_risk_metrics_returns_none_when_no_row():
     supabase = MagicMock()
-    supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
+    supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = (
+        []
+    )
 
     result = _load_risk_metrics(supabase, 1, "2026-05-21")
 
@@ -153,11 +173,11 @@ def test_load_risk_metrics_returns_none_when_no_row():
 def test_load_latest_macro_returns_all_indicators():
     supabase = MagicMock()
     supabase.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.side_effect = [
-        MagicMock(data=[{"value": 5.25}]),   # fed_funds_rate
+        MagicMock(data=[{"value": 5.25}]),  # fed_funds_rate
         MagicMock(data=[{"value": 310.5}]),  # cpi
-        MagicMock(data=[{"value": 4.30}]),   # treasury_yield_10y
-        MagicMock(data=[{"value": 18.0}]),   # vix
-        MagicMock(data=[{"value": 1.08}]),   # eur_usd_rate
+        MagicMock(data=[{"value": 4.30}]),  # treasury_yield_10y
+        MagicMock(data=[{"value": 18.0}]),  # vix
+        MagicMock(data=[{"value": 1.08}]),  # eur_usd_rate
     ]
 
     result = _load_latest_macro(supabase)
@@ -175,7 +195,8 @@ def test_load_worst_performer_returns_correct_asset():
 
     # portfolio_holdings: .select.rv.eq.rv.execute
     supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
-        {"asset_id": 1}, {"asset_id": 2}
+        {"asset_id": 1},
+        {"asset_id": 2},
     ]
     # prices (today): .select.rv.in_.rv.eq.rv.order.rv.limit.rv.execute
     supabase.table.return_value.select.return_value.in_.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value.data = [
@@ -195,11 +216,17 @@ def test_load_worst_performer_returns_correct_asset():
 
 # -------------------- Prompt tests --------------------
 
+
 def _make_risk_metrics(**kwargs) -> dict:
     base = {
-        "var_95": -0.0215, "var_99": -0.0312, "sharpe_ratio": 1.42,
-        "max_drawdown": -0.1134, "beta_vs_benchmark": 0.97,
-        "anomaly_flag": False, "anomaly_score": 0.12, "anomaly_type": None,
+        "var_95": -0.0215,
+        "var_99": -0.0312,
+        "sharpe_ratio": 1.42,
+        "max_drawdown": -0.1134,
+        "beta_vs_benchmark": 0.97,
+        "anomaly_flag": False,
+        "anomaly_score": 0.12,
+        "anomaly_type": None,
     }
     base.update(kwargs)
     return base
@@ -207,8 +234,11 @@ def _make_risk_metrics(**kwargs) -> dict:
 
 def _make_macro(**kwargs) -> dict:
     base = {
-        "fed_funds_rate": 5.25, "cpi": 310.5, "treasury_yield_10y": 4.30,
-        "vix": 18.0, "eur_usd_rate": 1.08,
+        "fed_funds_rate": 5.25,
+        "cpi": 310.5,
+        "treasury_yield_10y": 4.30,
+        "vix": 18.0,
+        "eur_usd_rate": 1.08,
     }
     base.update(kwargs)
     return base
@@ -242,7 +272,9 @@ def test_build_prompt_includes_macro_context():
 
 
 def test_build_prompt_includes_anomaly_info():
-    risk = _make_risk_metrics(anomaly_flag=True, anomaly_score=0.75, anomaly_type="volatility_anomaly")
+    risk = _make_risk_metrics(
+        anomaly_flag=True, anomaly_score=0.75, anomaly_type="volatility_anomaly"
+    )
     macro = _make_macro()
 
     prompt = _build_prompt(risk, [], macro, None)
@@ -254,6 +286,7 @@ def test_build_prompt_includes_anomaly_info():
 
 # -------------------- Write tests --------------------
 
+
 def test_write_briefing_updates_existing_row():
     supabase = MagicMock()
     supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
@@ -263,12 +296,16 @@ def test_write_briefing_updates_existing_row():
     result = _write_briefing(supabase, 1, "2026-05-21", "Test briefing text.")
 
     assert result is True
-    supabase.table.return_value.update.assert_called_once_with({"ai_briefing": "Test briefing text."})
+    supabase.table.return_value.update.assert_called_once_with(
+        {"ai_briefing": "Test briefing text."}
+    )
 
 
 def test_write_briefing_skips_when_no_row():
     supabase = MagicMock()
-    supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
+    supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = (
+        []
+    )
 
     result = _write_briefing(supabase, 1, "2026-05-21", "briefing")
 
@@ -277,6 +314,7 @@ def test_write_briefing_skips_when_no_row():
 
 
 # -------------------- Orchestrator tests --------------------
+
 
 @patch("src.ai_analyst.gemini_commentary._write_briefing")
 @patch("src.ai_analyst.gemini_commentary._call_gemini")
@@ -288,12 +326,18 @@ def test_write_briefing_skips_when_no_row():
 @patch("src.ai_analyst.gemini_commentary.utc_today")
 @patch("src.ai_analyst.gemini_commentary._load_keys")
 def test_generate_commentary_success(
-    mock_load_keys, mock_utc_today, mock_get_supabase,
-    mock_load_risk_metrics, mock_load_latest_macro,
-    mock_load_portfolio_holdings, mock_load_worst_performer,
-    mock_call_gemini, mock_write_briefing,
+    mock_load_keys,
+    mock_utc_today,
+    mock_get_supabase,
+    mock_load_risk_metrics,
+    mock_load_latest_macro,
+    mock_load_portfolio_holdings,
+    mock_load_worst_performer,
+    mock_call_gemini,
+    mock_write_briefing,
 ):
     from datetime import date
+
     mock_load_keys.return_value = ["key1"]
     mock_utc_today.return_value = date(2026, 5, 21)
 
@@ -304,18 +348,27 @@ def test_generate_commentary_success(
     ]
 
     mock_load_risk_metrics.return_value = {
-        "portfolio_id": 1, "date": "2026-05-21",
-        "var_95": -0.02, "var_99": -0.03, "sharpe_ratio": 1.5,
-        "max_drawdown": -0.1, "beta_vs_benchmark": 0.95,
-        "anomaly_flag": False, "anomaly_score": 0.1, "anomaly_type": None,
+        "portfolio_id": 1,
+        "date": "2026-05-21",
+        "var_95": -0.02,
+        "var_99": -0.03,
+        "sharpe_ratio": 1.5,
+        "max_drawdown": -0.1,
+        "beta_vs_benchmark": 0.95,
+        "anomaly_flag": False,
+        "anomaly_score": 0.1,
+        "anomaly_type": None,
     }
     mock_load_latest_macro.return_value = _make_macro()
     mock_load_portfolio_holdings.return_value = [
         {"asset_id": 1, "ticker": "SPY", "name": "S&P 500 ETF", "weight": 0.6},
     ]
     mock_load_worst_performer.return_value = {
-        "asset_id": 1, "ticker": "SPY", "name": "S&P 500 ETF",
-        "daily_return": -0.01, "date": "2026-05-21",
+        "asset_id": 1,
+        "ticker": "SPY",
+        "name": "S&P 500 ETF",
+        "daily_return": -0.01,
+        "date": "2026-05-21",
     }
     mock_call_gemini.return_value = "  Briefing text here.  "
     mock_write_briefing.return_value = True
@@ -342,9 +395,13 @@ def test_generate_commentary_no_keys(mock_load_keys):
 @patch("src.ai_analyst.gemini_commentary.utc_today")
 @patch("src.ai_analyst.gemini_commentary._load_keys")
 def test_generate_commentary_no_risk_metrics(
-    mock_load_keys, mock_utc_today, mock_get_supabase, mock_load_risk_metrics,
+    mock_load_keys,
+    mock_utc_today,
+    mock_get_supabase,
+    mock_load_risk_metrics,
 ):
     from datetime import date
+
     mock_load_keys.return_value = ["key1"]
     mock_utc_today.return_value = date(2026, 5, 21)
 
@@ -376,6 +433,7 @@ def test_generate_commentary_catches_exception(mock_load_keys, mock_get_supabase
 
 # -------------------- Pipeline tests --------------------
 
+
 @patch("pipeline.daily_pipeline.generate_commentary")
 @patch("pipeline.daily_pipeline.run_anomaly_detection")
 @patch("pipeline.daily_pipeline.compute_risk_metrics")
@@ -384,22 +442,39 @@ def test_generate_commentary_catches_exception(mock_load_keys, mock_get_supabase
 @patch("pipeline.daily_pipeline.fetch_macro_data")
 @patch("pipeline.daily_pipeline.fetch_market_data")
 def test_pipeline_calls_gemini_after_anomaly(
-    mock_market, mock_macro, mock_vix, mock_validate,
-    mock_risk, mock_anomaly, mock_gemini,
+    mock_market,
+    mock_macro,
+    mock_vix,
+    mock_validate,
+    mock_risk,
+    mock_anomaly,
+    mock_gemini,
 ):
     mock_market.return_value = {"rows_inserted": 10}
     mock_macro.return_value = {"rows_inserted": 4, "failures": []}
     mock_vix.return_value = {"rows_inserted": 1}
     mock_validate.return_value = {"status": "ok", "checks": []}
     mock_risk.return_value = {
-        "status": "success", "var_95": -0.02, "var_99": -0.03,
-        "sharpe_ratio": 1.5, "max_drawdown": -0.1, "beta_vs_benchmark": 0.95,
-        "portfolio_id": 1, "error": None,
+        "status": "success",
+        "var_95": -0.02,
+        "var_99": -0.03,
+        "sharpe_ratio": 1.5,
+        "max_drawdown": -0.1,
+        "beta_vs_benchmark": 0.95,
+        "portfolio_id": 1,
+        "error": None,
     }
     mock_anomaly.return_value = {
-        "status": "success", "anomalies_found": 0, "assets_scored": 5, "error": None,
+        "status": "success",
+        "anomalies_found": 0,
+        "assets_scored": 5,
+        "error": None,
     }
-    mock_gemini.return_value = {"status": "success", "briefing": "Test briefing.", "error": None}
+    mock_gemini.return_value = {
+        "status": "success",
+        "briefing": "Test briefing.",
+        "error": None,
+    }
 
     result = run_daily_pipeline()
 
@@ -416,17 +491,27 @@ def test_pipeline_calls_gemini_after_anomaly(
 @patch("pipeline.daily_pipeline.fetch_macro_data")
 @patch("pipeline.daily_pipeline.fetch_market_data")
 def test_pipeline_skips_gemini_when_risk_metrics_failed(
-    mock_market, mock_macro, mock_vix, mock_validate,
-    mock_risk, mock_anomaly, mock_gemini,
+    mock_market,
+    mock_macro,
+    mock_vix,
+    mock_validate,
+    mock_risk,
+    mock_anomaly,
+    mock_gemini,
 ):
     mock_market.return_value = {"rows_inserted": 0}
     mock_macro.return_value = {"rows_inserted": 0, "failures": []}
     mock_vix.return_value = {"rows_inserted": 0}
     mock_validate.return_value = {"status": "ok", "checks": []}
     mock_risk.return_value = {
-        "status": "failure", "error": "no data",
-        "var_95": None, "var_99": None, "sharpe_ratio": None,
-        "max_drawdown": None, "beta_vs_benchmark": None, "portfolio_id": None,
+        "status": "failure",
+        "error": "no data",
+        "var_95": None,
+        "var_99": None,
+        "sharpe_ratio": None,
+        "max_drawdown": None,
+        "beta_vs_benchmark": None,
+        "portfolio_id": None,
     }
 
     result = run_daily_pipeline()

@@ -4,8 +4,8 @@ import pytest
 
 from src.ingestion.common import retry, get_logger, today_iso, to_iso_date
 
-
 # ---- retry ----
+
 
 def test_retry_succeeds_on_first_try():
     fn = MagicMock(return_value=42)
@@ -49,6 +49,7 @@ def test_retry_does_not_sleep_after_last_attempt():
 
 # ---- get_logger ----
 
+
 def test_get_logger_returns_logger_with_correct_name():
     logger = get_logger("my_test_module")
     assert logger.name == "my_test_module"
@@ -67,6 +68,7 @@ def test_get_logger_does_not_propagate():
 
 # ---- today_iso ----
 
+
 def test_today_iso_returns_valid_iso_string():
     result = today_iso()
     assert isinstance(result, str)
@@ -79,6 +81,7 @@ def test_today_iso_matches_todays_date():
 
 
 # ---- to_iso_date ----
+
 
 def test_to_iso_date_from_datetime():
     dt = datetime(2026, 4, 24, 15, 30, 0)

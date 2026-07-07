@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from datetime import datetime, timedelta, UTC, date
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import pandas as pd
@@ -27,10 +28,7 @@ def get_existing_dates(supabase, asset_id: int) -> set[str]:
     - Makes the backfill idempotent and easy to re-run safely.
     """
     response = (
-        supabase.table("prices")
-        .select("date")
-        .eq("asset_id", asset_id)
-        .execute()
+        supabase.table("prices").select("date").eq("asset_id", asset_id).execute()
     )
     rows = response.data or []
     return {row["date"] for row in rows if row.get("date")}
@@ -81,10 +79,16 @@ def format_rows(df: pd.DataFrame, asset_id: int) -> list[dict[str, Any]]:
             {
                 "asset_id": asset_id,
                 "date": idx.strftime("%Y-%m-%d"),
-                "open": None if pd.isna(row.get("Open")) else round(float(row["Open"]), 4),
-                "high": None if pd.isna(row.get("High")) else round(float(row["High"]), 4),
+                "open": (
+                    None if pd.isna(row.get("Open")) else round(float(row["Open"]), 4)
+                ),
+                "high": (
+                    None if pd.isna(row.get("High")) else round(float(row["High"]), 4)
+                ),
                 "low": None if pd.isna(row.get("Low")) else round(float(row["Low"]), 4),
-                "close": None if pd.isna(row.get("Close")) else round(float(row["Close"]), 4),
+                "close": (
+                    None if pd.isna(row.get("Close")) else round(float(row["Close"]), 4)
+                ),
                 "volume": None if pd.isna(row.get("Volume")) else int(row["Volume"]),
                 "daily_return": (
                     None
@@ -188,7 +192,11 @@ def run_backfill(start_date: str = START_DATE_DEFAULT) -> dict[str, Any]:
         asset_id = ticker_to_id[ticker]
 
         try:
-            df = bulk_data[ticker].copy() if isinstance(bulk_data.columns, pd.MultiIndex) else bulk_data.copy()
+            df = (
+                bulk_data[ticker].copy()
+                if isinstance(bulk_data.columns, pd.MultiIndex)
+                else bulk_data.copy()
+            )
             df = normalize_downloaded_frame(df)
 
             if df.empty:

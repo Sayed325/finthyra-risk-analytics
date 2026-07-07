@@ -1,4 +1,5 @@
 """Lag variables, rolling stats, returns."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -86,7 +87,9 @@ def _load_macro_data(supabase) -> pd.DataFrame:
     return macro
 
 
-def _compute_asset_features(df: pd.DataFrame, asset_id: int, ticker: str) -> pd.DataFrame:
+def _compute_asset_features(
+    df: pd.DataFrame, asset_id: int, ticker: str
+) -> pd.DataFrame:
     """Compute per-asset rolling features. Returns DataFrame with all feature columns."""
     df = df.copy()
 
@@ -95,10 +98,7 @@ def _compute_asset_features(df: pd.DataFrame, asset_id: int, ticker: str) -> pd.
 
     # rolling_return_20d: cumulative product of (1+r) over trailing 20 days, minus 1
     df["rolling_return_20d"] = (
-        df["daily_return"]
-        .add(1)
-        .rolling(20)
-        .apply(lambda x: x.prod() - 1, raw=True)
+        df["daily_return"].add(1).rolling(20).apply(lambda x: x.prod() - 1, raw=True)
     )
 
     # return_zscore_20d — 0 when std is 0 (constant return series means no deviation)
@@ -140,7 +140,9 @@ def build_features(lookback_days: int = 252) -> pd.DataFrame:
     logger.info(f"Loaded {len(assets)} active assets")
 
     macro_df = _load_macro_data(supabase)
-    if macro_df.empty or all(macro_df[c].isna().all() for c in MACRO_INDICATORS if c in macro_df.columns):
+    if macro_df.empty or all(
+        macro_df[c].isna().all() for c in MACRO_INDICATORS if c in macro_df.columns
+    ):
         logger.warning("Macro data missing or empty — macro columns will be NaN")
 
     feature_frames = []
@@ -153,7 +155,9 @@ def build_features(lookback_days: int = 252) -> pd.DataFrame:
         prices = _load_prices_for_asset(supabase, asset_id, lookback_days)
 
         if prices.empty or len(prices) < 30:
-            logger.warning(f"Skipping {ticker} (asset_id={asset_id}): only {len(prices)} rows of price data")
+            logger.warning(
+                f"Skipping {ticker} (asset_id={asset_id}): only {len(prices)} rows of price data"
+            )
             skipped += 1
             continue
 
@@ -172,10 +176,8 @@ def build_features(lookback_days: int = 252) -> pd.DataFrame:
     # Merge macro context — forward-fill for weekends/holidays
     if not macro_df.empty:
         all_dates = all_features[["date"]].drop_duplicates().sort_values("date")
-        macro_filled = (
-            all_dates
-            .merge(macro_df, on="date", how="left")
-            .sort_values("date")
+        macro_filled = all_dates.merge(macro_df, on="date", how="left").sort_values(
+            "date"
         )
         # Forward-fill macro values for missing dates
         for col in MACRO_INDICATORS:

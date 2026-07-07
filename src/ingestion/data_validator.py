@@ -22,7 +22,9 @@ def parse_iso_date(value: str) -> date:
     return datetime.fromisoformat(value).date()
 
 
-def get_recent_expected_trading_days(exchange: str, lookback_days: int = 5) -> list[str]:
+def get_recent_expected_trading_days(
+    exchange: str, lookback_days: int = 5
+) -> list[str]:
     """
     CHANGED:
     - Uses exchange-specific market calendar.
@@ -152,7 +154,9 @@ def check_completeness(supabase) -> list[str]:
 
         expected_days = get_recent_expected_trading_days(exchange, lookback_days=5)
         if not expected_days:
-            issues.append(f"{ticker}: could not determine trading calendar for {exchange}")
+            issues.append(
+                f"{ticker}: could not determine trading calendar for {exchange}"
+            )
             continue
 
         min_date = expected_days[0]
@@ -190,7 +194,9 @@ def check_freshness(supabase) -> list[str]:
         td_old = trading_days_old(last_date, exchange)
 
         if td_old > 3:
-            issues.append(f"{ticker}: last data {last_date} ({td_old} trading days old)")
+            issues.append(
+                f"{ticker}: last data {last_date} ({td_old} trading days old)"
+            )
 
     latest_macro = get_latest_macro_dates(supabase)
     required_indicators = {"fed_funds_rate", "cpi", "treasury_yield_10y", "vix"}
@@ -204,11 +210,15 @@ def check_freshness(supabase) -> list[str]:
 
         if indicator == "cpi":
             if (utc_today() - last_date).days > 45:
-                issues.append(f"{indicator}: last data {last_date} (>45 calendar days old)")
+                issues.append(
+                    f"{indicator}: last data {last_date} (>45 calendar days old)"
+                )
         else:
             td_old = trading_days_old(last_date, "NYSE")
             if td_old > 3:
-                issues.append(f"{indicator}: last data {last_date} ({td_old} trading days old)")
+                issues.append(
+                    f"{indicator}: last data {last_date} ({td_old} trading days old)"
+                )
 
     return issues
 

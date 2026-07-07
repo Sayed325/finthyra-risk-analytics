@@ -1,4 +1,5 @@
 """VaR, Sharpe, Max Drawdown, Beta, Correlation."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -14,7 +15,10 @@ logger = get_logger("risk_metrics")
 
 # -------------------- DATA LOADING --------------------
 
-def load_prices(supabase, asset_ids: list[int], lookback_days: int = 756) -> pd.DataFrame:
+
+def load_prices(
+    supabase, asset_ids: list[int], lookback_days: int = 756
+) -> pd.DataFrame:
     frames = []
     for asset_id in asset_ids:
         response = (
@@ -106,7 +110,10 @@ def load_portfolio_holdings(supabase, portfolio_id: int) -> dict[int, float]:
 
 # -------------------- CALCULATIONS --------------------
 
-def compute_portfolio_returns(returns_df: pd.DataFrame, weights: dict[int, float]) -> pd.Series:
+
+def compute_portfolio_returns(
+    returns_df: pd.DataFrame, weights: dict[int, float]
+) -> pd.Series:
     wide = returns_df.pivot(index="date", columns="asset_id", values="daily_return")
     valid_cols = [c for c in wide.columns if c in weights]
     wide = wide[valid_cols].copy()
@@ -136,7 +143,9 @@ def compute_max_drawdown(returns: pd.Series) -> float:
     return float(drawdown.min())
 
 
-def compute_beta(portfolio_returns: pd.Series, benchmark_returns: pd.Series) -> float | None:
+def compute_beta(
+    portfolio_returns: pd.Series, benchmark_returns: pd.Series
+) -> float | None:
     aligned = pd.concat([portfolio_returns, benchmark_returns], axis=1, join="inner")
     aligned.columns = ["portfolio", "benchmark"]
     aligned = aligned.dropna()
@@ -154,7 +163,9 @@ def compute_beta(portfolio_returns: pd.Series, benchmark_returns: pd.Series) -> 
     return round(float(beta), 4)
 
 
-def compute_correlation_matrix(returns_df: pd.DataFrame, asset_map: dict[int, str]) -> dict:
+def compute_correlation_matrix(
+    returns_df: pd.DataFrame, asset_map: dict[int, str]
+) -> dict:
     wide = returns_df.pivot(index="date", columns="asset_id", values="daily_return")
     corr = wide.corr()
     rename_map = {k: v for k, v in asset_map.items() if k in corr.columns}
@@ -172,6 +183,7 @@ def compute_correlation_matrix(returns_df: pd.DataFrame, asset_map: dict[int, st
 
 
 # -------------------- WRITE --------------------
+
 
 def write_risk_metrics(supabase, portfolio_id: int, metrics: dict) -> None:
     row = {
@@ -200,6 +212,7 @@ def write_risk_metrics(supabase, portfolio_id: int, metrics: dict) -> None:
 
 
 # -------------------- ORCHESTRATOR --------------------
+
 
 def compute_risk_metrics() -> dict[str, Any]:
     try:
@@ -258,10 +271,7 @@ def compute_risk_metrics() -> dict[str, Any]:
 
         # Compute correlation matrix (log only — no DB column yet)
         response = (
-            supabase.table("assets")
-            .select("id,ticker")
-            .in_("id", asset_ids)
-            .execute()
+            supabase.table("assets").select("id,ticker").in_("id", asset_ids).execute()
         )
         asset_map = {row["id"]: row["ticker"] for row in (response.data or [])}
         corr_matrix = compute_correlation_matrix(prices_df, asset_map)

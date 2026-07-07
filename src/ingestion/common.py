@@ -1,8 +1,8 @@
-#Author: @ShoumikDutta
+# Author: @ShoumikDutta
 import logging
 import os
 import time
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from typing import Any, Callable, TypeVar
 
 from dotenv import load_dotenv
@@ -48,10 +48,7 @@ def get_exchange_for_ticker(ticker: str) -> str:
 
 def get_active_assets(supabase: Client) -> list[dict[str, Any]]:
     response = (
-        supabase.table("assets")
-        .select("id,ticker")
-        .eq("is_active", True)
-        .execute()
+        supabase.table("assets").select("id,ticker").eq("is_active", True).execute()
     )
     return response.data or []
 

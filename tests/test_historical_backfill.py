@@ -10,8 +10,8 @@ from scripts.historical_backfill import (
     run_backfill,
 )
 
-
 # ---- normalize_downloaded_frame ----
+
 
 def test_normalize_returns_empty_for_none():
     result = normalize_downloaded_frame(None)
@@ -49,6 +49,7 @@ def test_normalize_passes_through_normal_df():
 
 # ---- compute_returns ----
 
+
 def test_compute_returns_adds_daily_return_column():
     idx = pd.to_datetime(["2026-04-21", "2026-04-22", "2026-04-23"])
     df = pd.DataFrame({"Close": [100.0, 110.0, 99.0]}, index=idx)
@@ -79,16 +80,20 @@ def test_compute_returns_does_not_mutate_original():
 
 # ---- format_rows ----
 
+
 def test_format_rows_basic_structure():
     idx = pd.to_datetime(["2026-04-22"])
-    df = pd.DataFrame({
-        "Open": [99.0],
-        "High": [102.0],
-        "Low": [98.0],
-        "Close": [101.0],
-        "Volume": [5000],
-        "daily_return": [0.01],
-    }, index=idx)
+    df = pd.DataFrame(
+        {
+            "Open": [99.0],
+            "High": [102.0],
+            "Low": [98.0],
+            "Close": [101.0],
+            "Volume": [5000],
+            "daily_return": [0.01],
+        },
+        index=idx,
+    )
     rows = format_rows(df, asset_id=3)
     assert len(rows) == 1
     r = rows[0]
@@ -101,14 +106,17 @@ def test_format_rows_basic_structure():
 
 def test_format_rows_nan_values_become_none():
     idx = pd.to_datetime(["2026-04-22"])
-    df = pd.DataFrame({
-        "Open": [float("nan")],
-        "High": [float("nan")],
-        "Low": [float("nan")],
-        "Close": [float("nan")],
-        "Volume": [float("nan")],
-        "daily_return": [float("nan")],
-    }, index=idx)
+    df = pd.DataFrame(
+        {
+            "Open": [float("nan")],
+            "High": [float("nan")],
+            "Low": [float("nan")],
+            "Close": [float("nan")],
+            "Volume": [float("nan")],
+            "daily_return": [float("nan")],
+        },
+        index=idx,
+    )
     rows = format_rows(df, asset_id=1)
     r = rows[0]
     assert r["close"] is None
@@ -118,26 +126,40 @@ def test_format_rows_nan_values_become_none():
 
 def test_format_rows_rounds_close_to_4_decimals():
     idx = pd.to_datetime(["2026-04-22"])
-    df = pd.DataFrame({
-        "Close": [101.123456789],
-        "daily_return": [0.0],
-        "Open": [100.0], "High": [102.0], "Low": [99.0], "Volume": [1000],
-    }, index=idx)
+    df = pd.DataFrame(
+        {
+            "Close": [101.123456789],
+            "daily_return": [0.0],
+            "Open": [100.0],
+            "High": [102.0],
+            "Low": [99.0],
+            "Volume": [1000],
+        },
+        index=idx,
+    )
     rows = format_rows(df, asset_id=1)
     assert rows[0]["close"] == round(101.123456789, 4)
 
 
 def test_format_rows_volume_is_int():
     idx = pd.to_datetime(["2026-04-22"])
-    df = pd.DataFrame({
-        "Close": [100.0], "Open": [99.0], "High": [101.0], "Low": [98.0],
-        "Volume": [123456.0], "daily_return": [0.0],
-    }, index=idx)
+    df = pd.DataFrame(
+        {
+            "Close": [100.0],
+            "Open": [99.0],
+            "High": [101.0],
+            "Low": [98.0],
+            "Volume": [123456.0],
+            "daily_return": [0.0],
+        },
+        index=idx,
+    )
     rows = format_rows(df, asset_id=1)
     assert isinstance(rows[0]["volume"], int)
 
 
 # ---- upsert_rows ----
+
 
 def test_upsert_rows_empty_returns_zero_without_db_call():
     supabase = MagicMock()
@@ -155,6 +177,7 @@ def test_upsert_rows_returns_count():
 
 # ---- run_backfill (fully mocked) ----
 
+
 def _make_bulk_df(tickers):
     idx = pd.to_datetime(["2026-04-22", "2026-04-23"])
     arrays = []
@@ -163,7 +186,6 @@ def _make_bulk_df(tickers):
         for col in ["Close", "Open", "High", "Low", "Volume"]:
             arrays.append([100.0, 101.0] if col != "Volume" else [1000, 1100])
             names.append((t, col))
-    columns = pd.MultiIndex.from_tuples(names)
     return pd.DataFrame(dict(zip(names, arrays)), index=idx)
 
 
@@ -172,7 +194,9 @@ def _make_bulk_df(tickers):
 @patch("scripts.historical_backfill.download_bulk")
 @patch("scripts.historical_backfill.get_active_assets")
 @patch("scripts.historical_backfill.get_supabase")
-def test_run_backfill_success(mock_supabase, mock_assets, mock_bulk, mock_existing, mock_upsert):
+def test_run_backfill_success(
+    mock_supabase, mock_assets, mock_bulk, mock_existing, mock_upsert
+):
     mock_supabase.return_value = MagicMock()
     mock_assets.return_value = [{"id": 1, "ticker": "AAPL"}]
     mock_existing.return_value = set()
@@ -188,7 +212,9 @@ def test_run_backfill_success(mock_supabase, mock_assets, mock_bulk, mock_existi
 @patch("scripts.historical_backfill.download_bulk")
 @patch("scripts.historical_backfill.get_active_assets")
 @patch("scripts.historical_backfill.get_supabase")
-def test_run_backfill_empty_bulk_returns_failures(mock_supabase, mock_assets, mock_bulk):
+def test_run_backfill_empty_bulk_returns_failures(
+    mock_supabase, mock_assets, mock_bulk
+):
     mock_supabase.return_value = MagicMock()
     mock_assets.return_value = [{"id": 1, "ticker": "AAPL"}]
     mock_bulk.return_value = pd.DataFrame()

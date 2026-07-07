@@ -131,7 +131,9 @@ def fetch_vix() -> dict[str, Any]:
         logger.info("VIX: already up-to-date")
         return {"rows_inserted": 0, "latest_value": None}
 
-    logger.info(f"VIX: fetching from {start_date} to {fetch_end_date - timedelta(days=1)}")
+    logger.info(
+        f"VIX: fetching from {start_date} to {fetch_end_date - timedelta(days=1)}"
+    )
 
     try:
         df = retry(

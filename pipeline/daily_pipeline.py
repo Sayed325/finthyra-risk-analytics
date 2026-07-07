@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from datetime import datetime, UTC
@@ -60,7 +61,10 @@ def run_daily_pipeline() -> dict[str, Any]:
         logger.warning(
             f"Skipping anomaly detection — risk_metrics status={risk_result.get('status')!r}"
         )
-        anomaly_result: dict = {"status": "skipped", "error": f"risk_metrics {risk_result.get('status')}"}
+        anomaly_result: dict = {
+            "status": "skipped",
+            "error": f"risk_metrics {risk_result.get('status')}",
+        }
     else:
         try:
             anomaly_result = run_anomaly_detection()
@@ -76,9 +80,7 @@ def run_daily_pipeline() -> dict[str, Any]:
     if risk_result.get("status") == "success":
         try:
             gemini_result = generate_commentary()
-            logger.info(
-                f"gemini_commentary={gemini_result.get('status')}"
-            )
+            logger.info(f"gemini_commentary={gemini_result.get('status')}")
         except Exception as exc:
             logger.error(f"gemini_commentary raised unexpectedly: {exc}")
             gemini_result = {"status": "failure", "error": str(exc)}
@@ -86,7 +88,10 @@ def run_daily_pipeline() -> dict[str, Any]:
         logger.warning(
             f"Skipping Gemini commentary — risk_metrics status={risk_result.get('status')!r}"
         )
-        gemini_result: dict = {"status": "skipped", "error": "risk_metrics not successful"}
+        gemini_result: dict = {
+            "status": "skipped",
+            "error": "risk_metrics not successful",
+        }
 
     duration_seconds = round((datetime.now(UTC) - start).total_seconds(), 2)
 

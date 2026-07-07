@@ -1,4 +1,4 @@
-#author: @ShoumikDutta
+# author: @ShoumikDutta
 
 import pandas as pd
 from pathlib import Path
@@ -98,11 +98,13 @@ def validate_backfill_csv(csv_path="historical_backfill_export.csv"):
 
         # extreme returns
         extreme_returns = (
-            (g_clean["recalc_daily_return"] < -0.5) |
-            (g_clean["recalc_daily_return"] > 0.5)
+            (g_clean["recalc_daily_return"] < -0.5)
+            | (g_clean["recalc_daily_return"] > 0.5)
         ).sum()
         if extreme_returns > 0:
-            issues.append(f"{ticker}: {extreme_returns} extreme daily_return values found")
+            issues.append(
+                f"{ticker}: {extreme_returns} extreme daily_return values found"
+            )
 
         # compare saved vs recalculated daily_return
         compare = g_clean[["daily_return", "recalc_daily_return"]].dropna()
@@ -111,16 +113,22 @@ def validate_backfill_csv(csv_path="historical_backfill_export.csv"):
                 (compare["daily_return"] - compare["recalc_daily_return"]).abs() > 1e-6
             ).sum()
             if mismatch > 0:
-                warnings.append(f"{ticker}: {mismatch} daily_return mismatches vs recalculation")
+                warnings.append(
+                    f"{ticker}: {mismatch} daily_return mismatches vs recalculation"
+                )
 
-        ticker_summary.append({
-            "ticker": ticker,
-            "rows": len(g),
-            "start_date": g["date"].min().date() if g["date"].notna().any() else None,
-            "end_date": g["date"].max().date() if g["date"].notna().any() else None,
-            "missing_close": int(missing_close),
-            "daily_return_nan": int(dr_nan_count),
-        })
+        ticker_summary.append(
+            {
+                "ticker": ticker,
+                "rows": len(g),
+                "start_date": (
+                    g["date"].min().date() if g["date"].notna().any() else None
+                ),
+                "end_date": g["date"].max().date() if g["date"].notna().any() else None,
+                "missing_close": int(missing_close),
+                "daily_return_nan": int(dr_nan_count),
+            }
+        )
 
     summary_df = pd.DataFrame(ticker_summary).sort_values("ticker")
     summary_file = csv_file.with_name("backfill_validation_summary.csv")

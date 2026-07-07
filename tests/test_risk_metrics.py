@@ -1,4 +1,5 @@
 """Unit tests for risk metric calculations."""
+
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -23,6 +24,7 @@ def make_returns(values: list, freq: str = "B") -> pd.Series:
 
 # -------------------- VaR --------------------
 
+
 def test_compute_var_95():
     returns = pd.Series(np.linspace(-0.10, 0.10, 100))
     expected = float(np.percentile(returns, 5.0))
@@ -36,6 +38,7 @@ def test_compute_var_99():
 
 
 # -------------------- Sharpe --------------------
+
 
 def test_compute_sharpe_positive():
     # Alternating values give mean=0.002 with non-zero std
@@ -52,6 +55,7 @@ def test_compute_sharpe_zero_std():
 
 # -------------------- Max Drawdown --------------------
 
+
 def test_compute_max_drawdown_flat():
     returns = make_returns([0.0] * 100)
     result = compute_max_drawdown(returns)
@@ -65,6 +69,7 @@ def test_compute_max_drawdown_decline():
 
 
 # -------------------- Beta --------------------
+
 
 def test_compute_beta_aligned():
     rng = np.random.default_rng(42)
@@ -87,13 +92,16 @@ def test_compute_beta_insufficient_data():
 
 # -------------------- Portfolio Returns --------------------
 
+
 def test_compute_portfolio_returns_weighted():
     dates = pd.date_range("2024-01-01", periods=3, freq="B")
-    df = pd.DataFrame({
-        "date": list(dates) * 2,
-        "asset_id": [1, 1, 1, 2, 2, 2],
-        "daily_return": [0.04, 0.08, 0.02, 0.02, 0.06, 0.10],
-    })
+    df = pd.DataFrame(
+        {
+            "date": list(dates) * 2,
+            "asset_id": [1, 1, 1, 2, 2, 2],
+            "daily_return": [0.04, 0.08, 0.02, 0.02, 0.06, 0.10],
+        }
+    )
     weights = {1: 0.5, 2: 0.5}
     result = compute_portfolio_returns(df, weights)
     expected = np.array([0.03, 0.07, 0.06])
@@ -102,9 +110,12 @@ def test_compute_portfolio_returns_weighted():
 
 # -------------------- Write --------------------
 
+
 def test_write_risk_metrics_upsert_called():
     mock_supabase = MagicMock()
-    mock_supabase.table.return_value.upsert.return_value.execute.return_value = MagicMock()
+    mock_supabase.table.return_value.upsert.return_value.execute.return_value = (
+        MagicMock()
+    )
     metrics = {
         "var_95": -0.02,
         "var_99": -0.04,
@@ -119,14 +130,15 @@ def test_write_risk_metrics_upsert_called():
 
 def test_write_risk_metrics_raises_on_db_failure():
     mock_supabase = MagicMock()
-    mock_supabase.table.return_value.upsert.return_value.execute.side_effect = Exception(
-        "connection refused"
+    mock_supabase.table.return_value.upsert.return_value.execute.side_effect = (
+        Exception("connection refused")
     )
     with pytest.raises(RuntimeError, match="Supabase write failed"):
         write_risk_metrics(mock_supabase, portfolio_id=1, metrics={})
 
 
 # -------------------- Orchestrator --------------------
+
 
 def test_compute_risk_metrics_returns_failure_on_exception():
     with patch("src.processing.risk_metrics.get_supabase") as mock_get_supabase:

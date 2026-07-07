@@ -1,4 +1,5 @@
 """Finthyra Dashboard — full 7-panel Streamlit implementation."""
+
 from __future__ import annotations
 
 import os
@@ -15,11 +16,14 @@ load_dotenv()
 # ── PAGE CONFIG ───────────────────────────────────────────────────────────────
 
 st.set_page_config(page_title="Finthyra", layout="wide")
-st.markdown("""<style>
+st.markdown(
+    """<style>
   header[data-testid="stHeader"] { background: transparent !important; border: none !important; }
   div.block-container { padding-top: 0 !important; }
   section[data-testid="stSidebar"] > div { padding-top: 1rem; }
-</style>""", unsafe_allow_html=True)
+</style>""",
+    unsafe_allow_html=True,
+)
 
 _LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="90" viewBox="0 0 260 80">
   <defs>
@@ -66,7 +70,8 @@ _LOGO_SVG_SMALL = """<svg xmlns="http://www.w3.org/2000/svg" width="100%" height
 </svg>"""
 
 _today = datetime.now(UTC).strftime("%a %d %b %Y")
-st.markdown(f"""
+st.markdown(
+    f"""
 <div style="background:#0A1628;padding:20px 32px;border-bottom:2px solid #0D9488;
   border-radius:0 0 10px 10px;display:flex;justify-content:space-between;
   align-items:center;margin-bottom:20px">
@@ -80,7 +85,9 @@ st.markdown(f"""
   margin-top:-12px;margin-bottom:24px">
   Portfolio risk analysis powered by open data, modern data engineering, and AI.
 </p>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ── DB CONNECTION ─────────────────────────────────────────────────────────────
 
@@ -88,14 +95,18 @@ st.markdown(f"""
 @st.cache_resource
 def get_dashboard_supabase():
     url = os.environ["SUPABASE_URL"]
-    key = os.environ.get("SUPABASE_PUBLISHABLE_KEY", os.environ.get("SUPABASE_SECRET_KEY"))
+    key = os.environ.get(
+        "SUPABASE_PUBLISHABLE_KEY", os.environ.get("SUPABASE_SECRET_KEY")
+    )
     return create_client(url, key)
 
 
 try:
     supabase = get_dashboard_supabase()
 except Exception:
-    st.error("Could not connect to database. Check SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY.")
+    st.error(
+        "Could not connect to database. Check SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY."
+    )
     st.stop()
 
 # ── DEFAULT PORTFOLIO ─────────────────────────────────────────────────────────
@@ -130,7 +141,9 @@ try:
     )
     all_assets = a_resp.data or []
     ticker_to_id = {a["ticker"]: a["id"] for a in all_assets}
-    active_tickers = [a["ticker"] for a in all_assets if not a.get("is_benchmark", False)]
+    active_tickers = [
+        a["ticker"] for a in all_assets if not a.get("is_benchmark", False)
+    ]
 except Exception:
     pass
 
@@ -139,11 +152,14 @@ except Exception:
 st.sidebar.markdown(
     f'<div style="padding:4px 0 12px">{_LOGO_SVG_SMALL}</div>'
     '<hr style="border:none;border-top:1px solid #0D9488;margin:0 0 12px"/>',
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 st.sidebar.header("Controls")
+
+
 def _reset_assets():
     st.session_state["asset_select"] = active_tickers
+
 
 if active_tickers:
     if "asset_select" not in st.session_state:
@@ -153,7 +169,9 @@ if active_tickers:
         options=active_tickers,
         key="asset_select",
     )
-    st.sidebar.button("Reset selection", use_container_width=True, on_click=_reset_assets)
+    st.sidebar.button(
+        "Reset selection", use_container_width=True, on_click=_reset_assets
+    )
 else:
     selected_tickers = []
 
@@ -170,12 +188,7 @@ try:
     last_rows = last_resp.data or []
     last_run = last_rows[0]["date"] if last_rows else "N/A"
 
-    count_resp = (
-        supabase.table("prices")
-        .select("id", count="exact")
-        .limit(1)
-        .execute()
-    )
+    count_resp = supabase.table("prices").select("id", count="exact").limit(1).execute()
     total_price_rows = count_resp.count if count_resp.count is not None else "N/A"
 
     st.sidebar.write(f"Last pipeline run: **{last_run}**")
@@ -225,7 +238,9 @@ else:
     if risk_latest.get("anomaly_flag"):
         anomaly_type = risk_latest.get("anomaly_type") or "Unknown"
         anomaly_score = risk_latest.get("anomaly_score") or 0.0
-        st.warning(f"⚠️ Anomaly detected: {anomaly_type} (score: {float(anomaly_score):.2f})")
+        st.warning(
+            f"⚠️ Anomaly detected: {anomaly_type} (score: {float(anomaly_score):.2f})"
+        )
 
 # ════════════════════════════════════════════════════════════════════════════
 # PANEL 2 — RISK METRICS SUMMARY
@@ -246,8 +261,12 @@ else:
     cols = st.columns(5)
     cols[0].metric("VaR (95%)", f"{float(var_95):.2%}" if var_95 is not None else "N/A")
     cols[1].metric("VaR (99%)", f"{float(var_99):.2%}" if var_99 is not None else "N/A")
-    cols[2].metric("Sharpe Ratio", f"{float(sharpe):.2f}" if sharpe is not None else "N/A")
-    cols[3].metric("Max Drawdown", f"{float(max_dd):.2%}" if max_dd is not None else "N/A")
+    cols[2].metric(
+        "Sharpe Ratio", f"{float(sharpe):.2f}" if sharpe is not None else "N/A"
+    )
+    cols[3].metric(
+        "Max Drawdown", f"{float(max_dd):.2%}" if max_dd is not None else "N/A"
+    )
     cols[4].metric("Beta", f"{float(beta):.2f}" if beta is not None else "N/A")
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -299,16 +318,25 @@ else:
 
             if not combined.empty:
                 fig_price = px.line(
-                    combined, x="date", y="normalized_close", color="ticker",
+                    combined,
+                    x="date",
+                    y="normalized_close",
+                    color="ticker",
                     title="Price Performance (Normalized)",
-                    labels={"normalized_close": "Normalized Price (100 = start)", "date": "Date"},
+                    labels={
+                        "normalized_close": "Normalized Price (100 = start)",
+                        "date": "Date",
+                    },
                 )
                 st.plotly_chart(fig_price, use_container_width=True)
 
                 returns_df = combined.dropna(subset=["daily_return"])
                 if not returns_df.empty:
                     fig_ret = px.line(
-                        returns_df, x="date", y="daily_return", color="ticker",
+                        returns_df,
+                        x="date",
+                        y="daily_return",
+                        color="ticker",
                         title="Daily Returns",
                         labels={"daily_return": "Daily Return", "date": "Date"},
                     )
@@ -353,12 +381,14 @@ else:
             holdings_data = []
             for h in h_rows:
                 asset = asset_info.get(h["asset_id"], {})
-                holdings_data.append({
-                    "Ticker": asset.get("ticker", "UNKNOWN"),
-                    "Name": asset.get("name", "Unknown"),
-                    "Weight": f"{float(h['weight']):.1%}",
-                    "_weight": float(h["weight"]),
-                })
+                holdings_data.append(
+                    {
+                        "Ticker": asset.get("ticker", "UNKNOWN"),
+                        "Name": asset.get("name", "Unknown"),
+                        "Weight": f"{float(h['weight']):.1%}",
+                        "_weight": float(h["weight"]),
+                    }
+                )
 
             holdings_df = pd.DataFrame(holdings_data)
             if not holdings_df.empty:
@@ -370,7 +400,9 @@ else:
                     )
                 with col_pie:
                     fig_pie = px.pie(
-                        holdings_df, names="Ticker", values="_weight",
+                        holdings_df,
+                        names="Ticker",
+                        values="_weight",
                         title="Portfolio Allocation",
                     )
                     st.plotly_chart(fig_pie, use_container_width=True)
@@ -436,7 +468,13 @@ except Exception:
 st.markdown("---")
 st.subheader("🌍 Macro Environment")
 
-_MACRO_INDICATORS = ["fed_funds_rate", "cpi", "treasury_yield_10y", "vix", "eur_usd_rate"]
+_MACRO_INDICATORS = [
+    "fed_funds_rate",
+    "cpi",
+    "treasury_yield_10y",
+    "vix",
+    "eur_usd_rate",
+]
 _MACRO_LABELS = {
     "fed_funds_rate": "Fed Funds Rate",
     "cpi": "CPI",
@@ -495,7 +533,9 @@ try:
             vix_df["value"] = vix_df["value"].astype(float)
             if not vix_df.empty:
                 fig_vix = px.line(
-                    vix_df, x="date", y="value",
+                    vix_df,
+                    x="date",
+                    y="value",
                     title="VIX — Market Volatility Index",
                     labels={"value": "VIX", "date": "Date"},
                 )
@@ -532,19 +572,25 @@ else:
             rh_df = pd.DataFrame(rh_rows)
             rh_df["date"] = pd.to_datetime(rh_df["date"])
             rh_df["var_95"] = pd.to_numeric(rh_df["var_95"], errors="coerce")
-            rh_df["sharpe_ratio"] = pd.to_numeric(rh_df["sharpe_ratio"], errors="coerce")
+            rh_df["sharpe_ratio"] = pd.to_numeric(
+                rh_df["sharpe_ratio"], errors="coerce"
+            )
 
             col_var, col_sharpe = st.columns(2)
             with col_var:
                 fig_var = px.line(
-                    rh_df, x="date", y="var_95",
+                    rh_df,
+                    x="date",
+                    y="var_95",
                     title="VaR (95%) Trend",
                     labels={"var_95": "VaR (95%)", "date": "Date"},
                 )
                 st.plotly_chart(fig_var, use_container_width=True)
             with col_sharpe:
                 fig_sharpe = px.line(
-                    rh_df, x="date", y="sharpe_ratio",
+                    rh_df,
+                    x="date",
+                    y="sharpe_ratio",
                     title="Sharpe Ratio Trend",
                     labels={"sharpe_ratio": "Sharpe Ratio", "date": "Date"},
                 )
@@ -557,4 +603,4 @@ else:
 # ── FOOTER ───────────────────────────────────────────────────────────────────
 
 st.markdown("---")
-st.caption("Finthyra • Financial Intelligence Platform • Built by Sayed Hossen, Shoumik Dutta & Faisal Ahemmed")
+st.caption("Finthyra • Financial Intelligence Platform • Built by Sayed Hossen")

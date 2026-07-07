@@ -1,4 +1,5 @@
 """Gemini round-robin key rotation + briefing generation."""
+
 from __future__ import annotations
 
 import itertools
@@ -65,10 +66,13 @@ def _call_gemini(prompt: str) -> str:
             logger.warning(f"Gemini {model_name} call failed: {exc}")
             last_error = exc
 
-    raise RuntimeError(f"All {n} Gemini combinations exhausted. Last error: {last_error}")
+    raise RuntimeError(
+        f"All {n} Gemini combinations exhausted. Last error: {last_error}"
+    )
 
 
 # -------------------- DATA LOADING --------------------
+
 
 def _load_risk_metrics(supabase, portfolio_id: int, today: str) -> dict | None:
     response = (
@@ -122,12 +126,14 @@ def _load_portfolio_holdings(supabase, portfolio_id: int) -> list[dict]:
     result = []
     for h in holdings:
         asset = asset_map.get(h["asset_id"], {})
-        result.append({
-            "asset_id": h["asset_id"],
-            "weight": float(h["weight"]),
-            "ticker": asset.get("ticker", "UNKNOWN"),
-            "name": asset.get("name", "Unknown"),
-        })
+        result.append(
+            {
+                "asset_id": h["asset_id"],
+                "weight": float(h["weight"]),
+                "ticker": asset.get("ticker", "UNKNOWN"),
+                "name": asset.get("name", "Unknown"),
+            }
+        )
     return result
 
 
@@ -183,12 +189,17 @@ def _load_worst_performer(supabase, portfolio_id: int, today: str) -> dict | Non
         "asset_id": worst["asset_id"],
         "ticker": asset.get("ticker", "UNKNOWN"),
         "name": asset.get("name", "Unknown"),
-        "daily_return": float(worst["daily_return"]) if worst.get("daily_return") is not None else 0.0,
+        "daily_return": (
+            float(worst["daily_return"])
+            if worst.get("daily_return") is not None
+            else 0.0
+        ),
         "date": worst.get("date", today),
     }
 
 
 # -------------------- PROMPT --------------------
+
 
 def _build_prompt(
     risk_metrics: dict,
@@ -196,9 +207,11 @@ def _build_prompt(
     macro: dict[str, float | None],
     worst_performer: dict | None,
 ) -> str:
-    holdings_str = ", ".join(
-        f"{h['ticker']} ({float(h['weight']):.1%})" for h in holdings
-    ) if holdings else "N/A"
+    holdings_str = (
+        ", ".join(f"{h['ticker']} ({float(h['weight']):.1%})" for h in holdings)
+        if holdings
+        else "N/A"
+    )
 
     anomaly_flag = "YES" if risk_metrics.get("anomaly_flag") else "NO"
     anomaly_type = risk_metrics.get("anomaly_type") or "N/A"
@@ -249,6 +262,7 @@ def _build_prompt(
 
 # -------------------- WRITE --------------------
 
+
 def _write_briefing(supabase, portfolio_id: int, today: str, briefing: str) -> bool:
     """UPDATE existing risk_metrics row with ai_briefing. Returns True on success."""
     existing = (
@@ -265,14 +279,19 @@ def _write_briefing(supabase, portfolio_id: int, today: str, briefing: str) -> b
         )
         return False
 
-    supabase.table("risk_metrics").update({
-        "ai_briefing": briefing,
-    }).eq("portfolio_id", portfolio_id).eq("date", today).execute()
+    supabase.table("risk_metrics").update(
+        {
+            "ai_briefing": briefing,
+        }
+    ).eq(
+        "portfolio_id", portfolio_id
+    ).eq("date", today).execute()
 
     return True
 
 
 # -------------------- ORCHESTRATOR --------------------
+
 
 def generate_commentary(portfolio_id: int | None = None) -> dict:
     """
@@ -283,7 +302,11 @@ def generate_commentary(portfolio_id: int | None = None) -> dict:
         keys = _load_keys()
         if not keys:
             logger.error("No Gemini API keys configured")
-            return {"status": "failure", "briefing": None, "error": "no Gemini API keys configured"}
+            return {
+                "status": "failure",
+                "briefing": None,
+                "error": "no Gemini API keys configured",
+            }
 
         global _keys, _combinations, _combination_cycle
         if not _keys:
@@ -304,13 +327,19 @@ def generate_commentary(portfolio_id: int | None = None) -> dict:
             )
             rows = response.data or []
             if not rows:
-                raise RuntimeError("No default portfolio found in portfolio_configurations")
+                raise RuntimeError(
+                    "No default portfolio found in portfolio_configurations"
+                )
             portfolio_id = rows[0]["id"]
             logger.info(f"Using default portfolio_id={portfolio_id}")
 
         risk_metrics = _load_risk_metrics(supabase, portfolio_id, today)
         if risk_metrics is None:
-            return {"status": "skipped", "briefing": None, "error": "no risk metrics for today"}
+            return {
+                "status": "skipped",
+                "briefing": None,
+                "error": "no risk metrics for today",
+            }
 
         macro = _load_latest_macro(supabase)
         holdings = _load_portfolio_holdings(supabase, portfolio_id)
@@ -321,14 +350,22 @@ def generate_commentary(portfolio_id: int | None = None) -> dict:
 
         if not briefing_text or not briefing_text.strip():
             logger.error("Received empty response from Gemini")
-            return {"status": "failure", "briefing": None, "error": "empty Gemini response"}
+            return {
+                "status": "failure",
+                "briefing": None,
+                "error": "empty Gemini response",
+            }
 
         briefing_text = briefing_text.strip()
         logger.info(f"Generated briefing: {briefing_text}")
 
         success = _write_briefing(supabase, portfolio_id, today, briefing_text)
         if not success:
-            return {"status": "failure", "briefing": None, "error": "no risk_metrics row to update"}
+            return {
+                "status": "failure",
+                "briefing": None,
+                "error": "no risk_metrics row to update",
+            }
 
         return {"status": "success", "briefing": briefing_text, "error": None}
 

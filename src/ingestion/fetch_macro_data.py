@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, UTC, date
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import requests
@@ -56,9 +56,7 @@ def fetch_fred_series(series_id: str, start_date: str) -> list[dict[str, Any]]:
     # Why:
     # Easier debugging if FRED rejects the request or the API key is wrong.
     if response.status_code != 200:
-        raise RuntimeError(
-            f"FRED API error ({response.status_code}): {response.text}"
-        )
+        raise RuntimeError(f"FRED API error ({response.status_code}): {response.text}")
 
     data = response.json()
 
@@ -68,7 +66,9 @@ def fetch_fred_series(series_id: str, start_date: str) -> list[dict[str, Any]]:
     return data["observations"]
 
 
-def transform_rows(observations: list[dict[str, Any]], indicator: str) -> list[dict[str, Any]]:
+def transform_rows(
+    observations: list[dict[str, Any]], indicator: str
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
 
     for obs in observations:
@@ -150,7 +150,9 @@ def fetch_macro_data() -> dict[str, Any]:
             # Then calling .date() on an existing date caused:
             # 'datetime.date' object has no attribute 'date'
             if last_date:
-                start_date = datetime.fromisoformat(last_date).date() + timedelta(days=1)
+                start_date = datetime.fromisoformat(last_date).date() + timedelta(
+                    days=1
+                )
             else:
                 start_date = today - timedelta(days=30)
 

@@ -14,17 +14,20 @@ from src.ingestion.fetch_market_data import (
 
 def make_df(dates, closes, opens=None, highs=None, lows=None, volumes=None):
     n = len(dates)
-    return pd.DataFrame({
-        "Date": pd.to_datetime(dates),
-        "Open": opens or [100.0] * n,
-        "High": highs or [105.0] * n,
-        "Low": lows or [95.0] * n,
-        "Close": closes,
-        "Volume": volumes or [1000] * n,
-    })
+    return pd.DataFrame(
+        {
+            "Date": pd.to_datetime(dates),
+            "Open": opens or [100.0] * n,
+            "High": highs or [105.0] * n,
+            "Low": lows or [95.0] * n,
+            "Close": closes,
+            "Volume": volumes or [1000] * n,
+        }
+    )
 
 
 # ---- compute_daily_returns ----
+
 
 def test_compute_daily_returns_with_previous_close():
     df = make_df(["2026-03-18", "2026-03-19"], [102.0, 103.0])
@@ -56,6 +59,7 @@ def test_compute_daily_returns_chains_correctly_across_rows():
 
 
 # ---- build_rows ----
+
 
 def test_build_rows_basic_structure():
     df = make_df(["2026-03-18"], [102.0])
@@ -108,6 +112,7 @@ def test_build_rows_multiple_rows_preserves_order():
 
 # ---- upsert_rows ----
 
+
 def test_upsert_rows_empty_returns_zero_without_db_call():
     supabase = MagicMock()
     assert upsert_rows(supabase, [], "AAPL") == 0
@@ -132,6 +137,7 @@ def test_upsert_rows_raises_runtime_error_on_db_failure():
 
 # ---- get_fetch_window ----
 
+
 def test_get_fetch_window_with_last_date_starts_day_after():
     start, _ = get_fetch_window("2026-04-20", "AAPL")
     assert start == date(2026, 4, 21)
@@ -149,6 +155,7 @@ def test_get_fetch_window_end_is_always_tomorrow():
 
 # ---- fetch_market_data (integration, fully mocked) ----
 
+
 @patch("src.ingestion.fetch_market_data.upsert_rows")
 @patch("src.ingestion.fetch_market_data.build_rows")
 @patch("src.ingestion.fetch_market_data.compute_daily_returns")
@@ -158,8 +165,14 @@ def test_get_fetch_window_end_is_always_tomorrow():
 @patch("src.ingestion.fetch_market_data.get_active_assets")
 @patch("src.ingestion.fetch_market_data.get_supabase")
 def test_fetch_market_data_success(
-    mock_supabase, mock_assets, mock_last_date, mock_prev_close,
-    mock_download, mock_compute, mock_build, mock_upsert,
+    mock_supabase,
+    mock_assets,
+    mock_last_date,
+    mock_prev_close,
+    mock_download,
+    mock_compute,
+    mock_build,
+    mock_upsert,
 ):
     mock_supabase.return_value = MagicMock()
     mock_assets.return_value = [{"id": 1, "ticker": "AAPL"}]
@@ -183,7 +196,11 @@ def test_fetch_market_data_success(
 @patch("src.ingestion.fetch_market_data.get_active_assets")
 @patch("src.ingestion.fetch_market_data.get_supabase")
 def test_fetch_market_data_empty_download_not_a_failure(
-    mock_supabase, mock_assets, mock_last_date, mock_prev_close, mock_download,
+    mock_supabase,
+    mock_assets,
+    mock_last_date,
+    mock_prev_close,
+    mock_download,
 ):
     mock_supabase.return_value = MagicMock()
     mock_assets.return_value = [{"id": 1, "ticker": "AAPL"}]
@@ -202,7 +219,11 @@ def test_fetch_market_data_empty_download_not_a_failure(
 @patch("src.ingestion.fetch_market_data.get_active_assets")
 @patch("src.ingestion.fetch_market_data.get_supabase")
 def test_fetch_market_data_download_exception_records_failure(
-    mock_supabase, mock_assets, mock_last_date, mock_prev_close, mock_download,
+    mock_supabase,
+    mock_assets,
+    mock_last_date,
+    mock_prev_close,
+    mock_download,
 ):
     mock_supabase.return_value = MagicMock()
     mock_assets.return_value = [{"id": 1, "ticker": "AAPL"}]

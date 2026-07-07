@@ -1,10 +1,10 @@
 """XGBoost anomaly/risk flagging model."""
+
 from __future__ import annotations
 
 from datetime import date
 from typing import Any
 
-import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import classification_report
@@ -29,6 +29,7 @@ FEATURE_COLS = [
 
 # -------------------- LABELLING --------------------
 
+
 def _create_pseudo_labels(features_df: pd.DataFrame) -> pd.DataFrame:
     """Create binary anomaly labels from statistical thresholds per asset.
 
@@ -37,9 +38,8 @@ def _create_pseudo_labels(features_df: pd.DataFrame) -> pd.DataFrame:
     df = features_df.copy()
 
     # Compute 95th percentile volatility threshold per asset
-    vol_95 = (
-        df.groupby("asset_id")["rolling_volatility_20d"]
-        .transform(lambda x: x.quantile(0.95))
+    vol_95 = df.groupby("asset_id")["rolling_volatility_20d"].transform(
+        lambda x: x.quantile(0.95)
     )
 
     volatility_flag = df["rolling_volatility_20d"] > vol_95
@@ -59,20 +59,25 @@ def _create_pseudo_labels(features_df: pd.DataFrame) -> pd.DataFrame:
             types.append("volume_anomaly")
         return ",".join(types) if types else ""
 
-    flags_df = pd.DataFrame({
-        "volatility_flag": volatility_flag,
-        "return_flag": return_flag,
-        "drawdown_flag": drawdown_flag,
-        "volume_flag": volume_flag,
-    })
+    flags_df = pd.DataFrame(
+        {
+            "volatility_flag": volatility_flag,
+            "return_flag": return_flag,
+            "drawdown_flag": drawdown_flag,
+            "volume_flag": volume_flag,
+        }
+    )
 
-    df["anomaly"] = (volatility_flag | return_flag | drawdown_flag | volume_flag).astype(int)
+    df["anomaly"] = (
+        volatility_flag | return_flag | drawdown_flag | volume_flag
+    ).astype(int)
     df["anomaly_type"] = flags_df.apply(_anomaly_type, axis=1)
 
     return df
 
 
 # -------------------- TRAINING --------------------
+
 
 def train_model(features_df: pd.DataFrame) -> xgb.XGBClassifier:
     """Train XGBClassifier with pseudo-labels on historical feature data.
@@ -132,12 +137,15 @@ def train_model(features_df: pd.DataFrame) -> xgb.XGBClassifier:
             f"f1={report.get('1', {}).get('f1-score', 0):.3f}"
         )
     else:
-        logger.warning("Test set too small or single class — skipping classification report")
+        logger.warning(
+            "Test set too small or single class — skipping classification report"
+        )
 
     return model
 
 
 # -------------------- SCORING --------------------
+
 
 def score_today(
     model: xgb.XGBClassifier, features_df: pd.DataFrame
@@ -147,7 +155,9 @@ def score_today(
     Returns list of dicts with keys: asset_id, ticker, anomaly_flag, anomaly_score, anomaly_type.
     """
     if features_df.empty:
-        logger.warning("score_today: empty features DataFrame — returning empty results")
+        logger.warning(
+            "score_today: empty features DataFrame — returning empty results"
+        )
         return []
 
     labelled = _create_pseudo_labels(features_df)
@@ -160,13 +170,15 @@ def score_today(
         flag = bool(score > 0.5)
         anomaly_type_str = row["anomaly_type"] if row["anomaly_type"] else None
 
-        results.append({
-            "asset_id": int(row["asset_id"]),
-            "ticker": str(row["ticker"]),
-            "anomaly_flag": flag,
-            "anomaly_score": score,
-            "anomaly_type": anomaly_type_str,
-        })
+        results.append(
+            {
+                "asset_id": int(row["asset_id"]),
+                "ticker": str(row["ticker"]),
+                "anomaly_flag": flag,
+                "anomaly_score": score,
+                "anomaly_type": anomaly_type_str,
+            }
+        )
 
         logger.info(
             f"{row['ticker']}: anomaly_score={score:.4f} flag={flag}"
@@ -177,6 +189,7 @@ def score_today(
 
 
 # -------------------- WRITE --------------------
+
 
 def write_anomaly_results(
     results: list[dict[str, Any]], portfolio_id: int, target_date: str
@@ -218,14 +231,17 @@ def write_anomaly_results(
         f"Portfolio anomaly summary: flag={any_flag} score={max_score:.4f} type={unique_types}"
     )
 
-    supabase.table("risk_metrics").update({
-        "anomaly_flag": any_flag,
-        "anomaly_score": round(max_score, 4),
-        "anomaly_type": unique_types,
-    }).eq("portfolio_id", portfolio_id).eq("date", target_date).execute()
+    supabase.table("risk_metrics").update(
+        {
+            "anomaly_flag": any_flag,
+            "anomaly_score": round(max_score, 4),
+            "anomaly_type": unique_types,
+        }
+    ).eq("portfolio_id", portfolio_id).eq("date", target_date).execute()
 
 
 # -------------------- ORCHESTRATOR --------------------
+
 
 def run_anomaly_detection(portfolio_id: int | None = None) -> dict[str, Any]:
     """Full anomaly detection pipeline: load → train → score → write.
@@ -245,7 +261,9 @@ def run_anomaly_detection(portfolio_id: int | None = None) -> dict[str, Any]:
             )
             rows = response.data or []
             if not rows:
-                raise RuntimeError("No default portfolio found in portfolio_configurations")
+                raise RuntimeError(
+                    "No default portfolio found in portfolio_configurations"
+                )
             portfolio_id = rows[0]["id"]
             logger.info(f"Using default portfolio_id={portfolio_id}")
 
@@ -265,7 +283,9 @@ def run_anomaly_detection(portfolio_id: int | None = None) -> dict[str, Any]:
         today_df = build_features_for_date(target_date=target_date)
 
         if today_df.empty:
-            logger.warning(f"No features available for {target_date} — no scoring performed")
+            logger.warning(
+                f"No features available for {target_date} — no scoring performed"
+            )
             return {
                 "status": "success",
                 "assets_scored": 0,
@@ -300,5 +320,6 @@ def run_anomaly_detection(portfolio_id: int | None = None) -> dict[str, Any]:
 
 if __name__ == "__main__":
     import json
+
     result = run_anomaly_detection()
     print(json.dumps(result, indent=2, default=str))

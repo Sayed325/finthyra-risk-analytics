@@ -20,7 +20,7 @@ from src.ingestion.fetch_market_data import fetch_market_data
 from src.ingestion.fetch_macro_data import fetch_macro_data
 from src.ingestion.fetch_vix import fetch_vix
 from src.ingestion.data_validator import validate_data
-from src.ingestion.common import get_supabase
+from src.ingestion.common import get_active_assets, get_supabase
 
 REQUIRED_MACRO_INDICATORS = {
     "fed_funds_rate",
@@ -54,17 +54,6 @@ def print_error(message: str) -> None:
 
 
 # -------------------- DB HELPERS --------------------
-def get_active_assets(supabase) -> list[dict[str, Any]]:
-    rows = (
-        supabase.table("assets")
-        .select("id,ticker")
-        .eq("is_active", True)
-        .execute()
-        .data
-    )
-    return rows or []
-
-
 def asset_has_price_data(supabase, asset_id: int) -> bool:
     """
     CHANGED:
@@ -124,13 +113,7 @@ def get_price_row_count(supabase) -> int:
     - For this script we only need to know whether prices is empty or not.
     - We no longer use this to infer per-asset coverage.
     """
-    rows = (
-        supabase.table("prices")
-        .select("asset_id")
-        .limit(1)
-        .execute()
-        .data
-    )
+    rows = supabase.table("prices").select("asset_id").limit(1).execute().data
     return len(rows or [])
 
 
@@ -140,11 +123,7 @@ def get_macro_row_count(supabase) -> int:
     - Keep this only as a coarse empty-table check.
     """
     rows = (
-        supabase.table("macro_indicators")
-        .select("indicator")
-        .limit(1)
-        .execute()
-        .data
+        supabase.table("macro_indicators").select("indicator").limit(1).execute().data
     )
     return len(rows or [])
 

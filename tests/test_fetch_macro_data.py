@@ -7,8 +7,8 @@ from src.ingestion.fetch_macro_data import (
     fetch_macro_data,
 )
 
-
 # ---- transform_rows (pure function) ----
+
 
 def test_transform_rows_builds_correct_row():
     obs = [{"date": "2026-04-24", "value": "5.25"}]
@@ -59,6 +59,7 @@ def test_transform_rows_converts_value_to_float():
 
 # ---- upsert_rows ----
 
+
 def test_upsert_rows_empty_returns_zero_without_db_call():
     supabase = MagicMock()
     assert upsert_rows(supabase, []) == 0
@@ -68,8 +69,18 @@ def test_upsert_rows_empty_returns_zero_without_db_call():
 def test_upsert_rows_returns_count_of_inserted():
     supabase = MagicMock()
     rows = [
-        {"indicator": "fed_funds_rate", "date": "2026-04-24", "value": 5.25, "source": "fred"},
-        {"indicator": "fed_funds_rate", "date": "2026-04-23", "value": 5.25, "source": "fred"},
+        {
+            "indicator": "fed_funds_rate",
+            "date": "2026-04-24",
+            "value": 5.25,
+            "source": "fred",
+        },
+        {
+            "indicator": "fed_funds_rate",
+            "date": "2026-04-23",
+            "value": 5.25,
+            "source": "fred",
+        },
     ]
     result = upsert_rows(supabase, rows)
     assert result == 2
@@ -79,18 +90,23 @@ def test_upsert_rows_returns_count_of_inserted():
 def test_upsert_rows_raises_runtime_error_on_db_failure():
     supabase = MagicMock()
     supabase.table.return_value.upsert.side_effect = Exception("connection refused")
-    rows = [{"indicator": "cpi", "date": "2026-04-24", "value": 310.0, "source": "fred"}]
+    rows = [
+        {"indicator": "cpi", "date": "2026-04-24", "value": 310.0, "source": "fred"}
+    ]
     with pytest.raises(RuntimeError, match="Supabase write failed"):
         upsert_rows(supabase, rows)
 
 
 # ---- fetch_macro_data (fully mocked) ----
 
+
 @patch("src.ingestion.fetch_macro_data.upsert_rows")
 @patch("src.ingestion.fetch_macro_data.fetch_fred_series")
 @patch("src.ingestion.fetch_macro_data.get_last_date")
 @patch("src.ingestion.fetch_macro_data.get_supabase")
-def test_fetch_macro_data_success(mock_supabase, mock_last_date, mock_fred, mock_upsert):
+def test_fetch_macro_data_success(
+    mock_supabase, mock_last_date, mock_fred, mock_upsert
+):
     mock_supabase.return_value = MagicMock()
     mock_last_date.return_value = None
     mock_fred.return_value = [{"date": "2026-04-24", "value": "5.25"}]
@@ -108,7 +124,9 @@ def test_fetch_macro_data_success(mock_supabase, mock_last_date, mock_fred, mock
 @patch("src.ingestion.fetch_macro_data.fetch_fred_series")
 @patch("src.ingestion.fetch_macro_data.get_last_date")
 @patch("src.ingestion.fetch_macro_data.get_supabase")
-def test_fetch_macro_data_records_failure_on_fred_error(mock_supabase, mock_last_date, mock_fred):
+def test_fetch_macro_data_records_failure_on_fred_error(
+    mock_supabase, mock_last_date, mock_fred
+):
     mock_supabase.return_value = MagicMock()
     mock_last_date.return_value = None
     mock_fred.side_effect = RuntimeError("FRED API down")
@@ -121,8 +139,11 @@ def test_fetch_macro_data_records_failure_on_fred_error(mock_supabase, mock_last
 @patch("src.ingestion.fetch_macro_data.fetch_fred_series")
 @patch("src.ingestion.fetch_macro_data.get_last_date")
 @patch("src.ingestion.fetch_macro_data.get_supabase")
-def test_fetch_macro_data_skips_already_up_to_date(mock_supabase, mock_last_date, mock_fred, mock_upsert):
+def test_fetch_macro_data_skips_already_up_to_date(
+    mock_supabase, mock_last_date, mock_fred, mock_upsert
+):
     from datetime import date
+
     mock_supabase.return_value = MagicMock()
     # Return tomorrow as last date to trigger "already up-to-date" branch
     future = (date.today().replace(year=date.today().year + 1)).isoformat()
@@ -138,10 +159,14 @@ def test_fetch_macro_data_skips_already_up_to_date(mock_supabase, mock_last_date
 @patch("src.ingestion.fetch_macro_data.fetch_fred_series")
 @patch("src.ingestion.fetch_macro_data.get_last_date")
 @patch("src.ingestion.fetch_macro_data.get_supabase")
-def test_fetch_macro_data_handles_empty_observations(mock_supabase, mock_last_date, mock_fred, mock_upsert):
+def test_fetch_macro_data_handles_empty_observations(
+    mock_supabase, mock_last_date, mock_fred, mock_upsert
+):
     mock_supabase.return_value = MagicMock()
     mock_last_date.return_value = None
-    mock_fred.return_value = [{"date": "2026-04-24", "value": "."}]  # all dots → empty after transform
+    mock_fred.return_value = [
+        {"date": "2026-04-24", "value": "."}
+    ]  # all dots → empty after transform
 
     result = fetch_macro_data()
     mock_upsert.assert_not_called()

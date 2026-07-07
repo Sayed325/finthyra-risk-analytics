@@ -1,6 +1,5 @@
-#author: @ShoumikDutta
+# author: @ShoumikDutta
 
-import os
 import pandas as pd
 import yfinance as yf
 from datetime import datetime
@@ -49,7 +48,7 @@ def export_backfill_to_csv(start_date="2022-01-01"):
         end=end_date,
         group_by="ticker",
         auto_adjust=False,
-        progress=True
+        progress=True,
     )
 
     all_rows = []
@@ -79,7 +78,7 @@ def export_backfill_to_csv(start_date="2022-01-01"):
                 "high",
                 "low",
                 "close",
-                "volume"
+                "volume",
             ]
 
             # Calculate daily return

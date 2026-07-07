@@ -1,7 +1,7 @@
 # Author: @ShoumikDutta
 from __future__ import annotations
 
-from datetime import datetime, timedelta, UTC, date
+from datetime import datetime, timedelta, date
 from typing import Any
 
 import pandas as pd
@@ -9,7 +9,6 @@ import yfinance as yf
 
 from src.ingestion.common import (
     get_active_assets,
-    get_exchange_for_ticker,
     get_logger,
     get_supabase,
     retry,
@@ -121,7 +120,9 @@ def download_ticker_data(ticker: str, start_date: str, end_date: str) -> pd.Data
 
 
 # -------------------- TRANSFORM --------------------
-def compute_daily_returns(df: pd.DataFrame, previous_close: float | None) -> pd.DataFrame:
+def compute_daily_returns(
+    df: pd.DataFrame, previous_close: float | None
+) -> pd.DataFrame:
     """
     CHANGED:
     - First row uses prior DB close if available.
@@ -156,7 +157,9 @@ def build_rows(df: pd.DataFrame, asset_id: int) -> list[dict[str, Any]]:
                 "open": None if pd.isna(row["Open"]) else round(float(row["Open"]), 4),
                 "high": None if pd.isna(row["High"]) else round(float(row["High"]), 4),
                 "low": None if pd.isna(row["Low"]) else round(float(row["Low"]), 4),
-                "close": None if pd.isna(row["Close"]) else round(float(row["Close"]), 4),
+                "close": (
+                    None if pd.isna(row["Close"]) else round(float(row["Close"]), 4)
+                ),
                 "volume": None if pd.isna(row["Volume"]) else int(row["Volume"]),
                 "daily_return": (
                     None
@@ -218,7 +221,9 @@ def fetch_market_data() -> dict[str, Any]:
                 logger.info(f"{ticker}: no fetch needed")
                 continue
 
-            logger.info(f"{ticker}: fetching from {start_date} to {fetch_end_date - timedelta(days=1)}")
+            logger.info(
+                f"{ticker}: fetching from {start_date} to {fetch_end_date - timedelta(days=1)}"
+            )
 
             df = retry(
                 lambda: download_ticker_data(
@@ -236,7 +241,9 @@ def fetch_market_data() -> dict[str, Any]:
                 logger.warning(f"{ticker}: no data returned")
                 continue
 
-            previous_close = get_previous_close(supabase, asset_id, start_date.isoformat())
+            previous_close = get_previous_close(
+                supabase, asset_id, start_date.isoformat()
+            )
             df = compute_daily_returns(df, previous_close)
 
             rows = build_rows(df, asset_id)

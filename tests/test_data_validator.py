@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock, patch
 from datetime import date
 
 import src.ingestion.data_validator as dv
 
-
 # ---- pure functions (no mocking needed) ----
+
 
 def test_get_exchange_for_ticker_us_default():
     assert dv.get_exchange_for_ticker("AAPL") == "NYSE"
@@ -36,6 +35,7 @@ def test_parse_iso_date_returns_date_object():
 
 
 # ---- check_sanity (patch the page fetchers) ----
+
 
 @patch("src.ingestion.data_validator.fetch_macro_page", return_value=[])
 @patch("src.ingestion.data_validator.fetch_prices_page")
@@ -116,6 +116,7 @@ def test_check_sanity_flags_vix_out_of_range(mock_macro, mock_prices):
 
 # ---- check_duplicates ----
 
+
 def _make_dup_supabase(prices_pages, macro_pages):
     supabase = MagicMock()
     call_count = {"n": 0}
@@ -128,13 +129,21 @@ def _make_dup_supabase(prices_pages, macro_pages):
         m.execute.return_value.data = all_pages[idx] if idx < len(all_pages) else []
         return m
 
-    supabase.table.return_value.select.return_value.range.side_effect = range_side_effect
+    supabase.table.return_value.select.return_value.range.side_effect = (
+        range_side_effect
+    )
     return supabase
 
 
 def test_check_duplicates_no_issues_on_unique_data():
     supabase = _make_dup_supabase(
-        prices_pages=[[{"asset_id": 1, "date": "2026-04-20"}, {"asset_id": 1, "date": "2026-04-21"}], []],
+        prices_pages=[
+            [
+                {"asset_id": 1, "date": "2026-04-20"},
+                {"asset_id": 1, "date": "2026-04-21"},
+            ],
+            [],
+        ],
         macro_pages=[[{"indicator": "vix", "date": "2026-04-20"}], []],
     )
     issues = dv.check_duplicates(supabase)
@@ -164,6 +173,7 @@ def test_check_duplicates_detects_macro_duplicate():
 
 # ---- validate_data (patch all check functions + get_supabase) ----
 
+
 @patch("src.ingestion.data_validator.get_supabase")
 @patch("src.ingestion.data_validator.check_completeness", return_value=[])
 @patch("src.ingestion.data_validator.check_freshness", return_value=[])
@@ -178,7 +188,12 @@ def test_validate_data_returns_expected_structure(
     assert "status" in result
     assert "checks" in result
     assert "timestamp" in result
-    assert set(result["checks"].keys()) == {"completeness", "freshness", "sanity", "duplicates"}
+    assert set(result["checks"].keys()) == {
+        "completeness",
+        "freshness",
+        "sanity",
+        "duplicates",
+    }
 
 
 @patch("src.ingestion.data_validator.get_supabase")
@@ -195,7 +210,10 @@ def test_validate_data_status_pass_when_all_clean(
 
 
 @patch("src.ingestion.data_validator.get_supabase")
-@patch("src.ingestion.data_validator.check_completeness", return_value=["AAPL: missing 2026-04-22"])
+@patch(
+    "src.ingestion.data_validator.check_completeness",
+    return_value=["AAPL: missing 2026-04-22"],
+)
 @patch("src.ingestion.data_validator.check_freshness", return_value=[])
 @patch("src.ingestion.data_validator.check_sanity", return_value=[])
 @patch("src.ingestion.data_validator.check_duplicates", return_value=[])
@@ -211,7 +229,10 @@ def test_validate_data_status_warn_on_completeness_issue(
 @patch("src.ingestion.data_validator.get_supabase")
 @patch("src.ingestion.data_validator.check_completeness", return_value=[])
 @patch("src.ingestion.data_validator.check_freshness", return_value=[])
-@patch("src.ingestion.data_validator.check_sanity", return_value=["asset 1: invalid close -5"])
+@patch(
+    "src.ingestion.data_validator.check_sanity",
+    return_value=["asset 1: invalid close -5"],
+)
 @patch("src.ingestion.data_validator.check_duplicates", return_value=[])
 def test_validate_data_status_fail_on_sanity_issue(
     mock_dupes, mock_sanity, mock_fresh, mock_complete, mock_db
@@ -226,7 +247,10 @@ def test_validate_data_status_fail_on_sanity_issue(
 @patch("src.ingestion.data_validator.check_completeness", return_value=[])
 @patch("src.ingestion.data_validator.check_freshness", return_value=[])
 @patch("src.ingestion.data_validator.check_sanity", return_value=[])
-@patch("src.ingestion.data_validator.check_duplicates", return_value=["duplicate price row: (1, '2026-04-20')"])
+@patch(
+    "src.ingestion.data_validator.check_duplicates",
+    return_value=["duplicate price row: (1, '2026-04-20')"],
+)
 def test_validate_data_status_fail_on_duplicate_issue(
     mock_dupes, mock_sanity, mock_fresh, mock_complete, mock_db
 ):

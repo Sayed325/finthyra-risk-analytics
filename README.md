@@ -10,6 +10,10 @@ You open the dashboard. It shows your portfolio, today's risk metrics, and a 3-s
 
 No finance degree needed. No Bloomberg subscription. No manual work.
 
+## Dashboard
+
+![Finthyra dashboard overview](docs/images/dashboard-overview.png)
+
 ## Architecture
 
 ```
